@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	hotelusecases "github.com/rom6n/otello/internal/app/application/usecases/hotelUsecases"
+	hotelusecases "github.com/rom6n/otello/internal/app/application/usecases/hotelusecases"
 	"github.com/rom6n/otello/internal/app/domain/hotel"
 )
 

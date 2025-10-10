@@ -9,7 +9,7 @@ import (
 	"github.com/rom6n/otello/internal/app/adapters/handler"
 	"github.com/rom6n/otello/internal/app/config"
 	"github.com/rom6n/otello/internal/app/domain/user"
-	jwtutils "github.com/rom6n/otello/internal/utils/jwtUtils"
+	jwtutils "github.com/rom6n/otello/internal/utils/jwtutils"
 )
 
 func NewFiberApp(cfg config.Config) *fiber.App {
@@ -22,7 +22,7 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 	//hotelApi := api.Group("/hotel")
 	adminApi := api.Group("/admin")
 	adminHotelApi := adminApi.Group("/hotel")
-	//adminRoomApi := adminApi.Group("/room")
+	adminRoomApi := adminApi.Group("/hotel-room")
 
 	userHandler := handler.UserHandler{
 		UserUsecase: cfg.UserUsecases,
@@ -32,17 +32,22 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 		HotelUsecase: cfg.HotelUsecases,
 	}
 
+	hotelRoomHandler := handler.HotelRoomHandler{
+		HotelRoomUsecase: cfg.HotelRoomUsecases,
+	}
+
 	userApi.Get("/register", userHandler.Register())                                         // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴🔴🔴
 	userApi.Get("/login", userHandler.Login())                                               // POST сделать потом !!!!!!!!!!!!!  🔴🔴🔴
 	userApi.Get("/rename", CheckJwtMiddleware(cfg.JWTREpo, false), userHandler.ChangeName()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 
+	// 5da2255a-1ce7-4427-ad44-862165ebf9d7
 	adminHotelApi.Get("/create", CheckJwtMiddleware(cfg.JWTREpo, true), hotelHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 	adminHotelApi.Get("/update", CheckJwtMiddleware(cfg.JWTREpo, true), hotelHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 	adminHotelApi.Get("/delete", CheckJwtMiddleware(cfg.JWTREpo, true), hotelHandler.Delete()) // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 
-	//adminRoomApi.Get("create") // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	//adminRoomApi.Get("update") // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	//adminRoomApi.Get("delete") // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminRoomApi.Get("/create", CheckJwtMiddleware(cfg.JWTREpo, true), hotelRoomHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminRoomApi.Get("/update", CheckJwtMiddleware(cfg.JWTREpo, true), hotelRoomHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminRoomApi.Get("/delete", CheckJwtMiddleware(cfg.JWTREpo, true), hotelRoomHandler.Delete()) // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 
 	return app
 }
