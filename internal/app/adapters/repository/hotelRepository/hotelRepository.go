@@ -1,0 +1,109 @@
+package hotelrepository
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/rom6n/otello/internal/app/domain/hotel"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+)
+
+type HotelRepository interface {
+	CreateHotel(ctx context.Context, hotel *hotel.Hotel) error
+	UpdateHotel(ctx context.Context, hotel *hotel.Hotel) error
+	DeleteHotel(ctx context.Context, hotelUuid uuid.UUID) error
+	GetHotel(ctx context.Context, hotelUuid uuid.UUID) (*hotel.Hotel, error)
+}
+
+type hotelRepo struct {
+	client         *mongo.Client
+	dbName         string
+	collectionName string
+	timeout        time.Duration
+}
+
+func New(dbConnection *mongo.Client, dbName, collectionName string, timeout time.Duration) HotelRepository {
+	return &hotelRepo{
+		client:         dbConnection,
+		dbName:         dbName,
+		collectionName: collectionName,
+		timeout:        timeout,
+	}
+}
+
+func (v *hotelRepo) getContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, v.timeout)
+}
+
+func (v *hotelRepo) getCollection() *mongo.Collection {
+	return v.client.Database(v.dbName).Collection(v.collectionName)
+}
+
+func (v *hotelRepo) CreateHotel(ctx context.Context, hotel *hotel.Hotel) error {
+	dbCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	collection := v.getCollection()
+
+	_, err := collection.InsertOne(dbCtx, hotel)
+	if err != nil {
+		return fmt.Errorf("failed to create hotel: %v", err)
+	}
+
+	return nil
+}
+
+func (v *hotelRepo) UpdateHotel(ctx context.Context, hotel *hotel.Hotel) error {
+	dbCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	collection := v.getCollection()
+
+	update := bson.M{
+		"$set": bson.M{
+			"name":  hotel.Name,
+			"city":  hotel.City,
+			"stars": hotel.Stars,
+		},
+	}
+
+	_, err := collection.UpdateByID(dbCtx, hotel.Uuid, update)
+	if err != nil {
+		return fmt.Errorf("failed to update hotel: %v", err)
+	}
+
+	return nil
+}
+
+func (v *hotelRepo) DeleteHotel(ctx context.Context, hotelUuid uuid.UUID) error {
+	dbCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	collection := v.getCollection()
+
+	_, err := collection.DeleteOne(dbCtx, bson.D{{Key: "_id", Value: hotelUuid}})
+	if err != nil {
+		return fmt.Errorf("failed to delete hotel: %v", err)
+	}
+
+	return nil
+}
+
+func (v *hotelRepo) GetHotel(ctx context.Context, hotelUuid uuid.UUID) (*hotel.Hotel, error) {
+	dbCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	collection := v.getCollection()
+
+	var hotel hotel.Hotel
+
+	err := collection.FindOne(dbCtx, bson.D{{Key: "_id", Value: hotelUuid}}).Decode(&hotel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find hotel: %v", err)
+	}
+
+	return &hotel, nil
+}
