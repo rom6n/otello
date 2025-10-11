@@ -39,6 +39,14 @@ func (v *HotelHandler) Create() fiber.Handler {
 			})
 		}
 
+		if stars < 1 || stars > 5 {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Success: false,
+				Message: "failed to create hotel",
+				Error:   "invalid value stars. supported range 1-5 stars",
+			})
+		}
+
 		hotel := hotel.NewHotel(name, city, int32(stars))
 
 		if err := v.HotelUsecase.Create(ctx, hotel); err != nil {
@@ -84,14 +92,22 @@ func (v *HotelHandler) Update() fiber.Handler {
 		}
 
 		var newStars int64
-		var parseIntErr error
 		if newStarsStr != "" {
+			var parseIntErr error
 			newStars, parseIntErr = strconv.ParseInt(newStarsStr, 0, 32)
 			if parseIntErr != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
 					Success: false,
 					Message: "failed to update hotel",
 					Error:   fmt.Sprintf("failed to parse new amount of stars: %v", parseIntErr),
+				})
+			}
+
+			if newStars < 1 || newStars > 5 {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Success: false,
+					Message: "failed to update hotel",
+					Error:   "invalid value stars. supported range 1-5 stars",
 				})
 			}
 		}
@@ -165,6 +181,59 @@ func (v *HotelHandler) Delete() fiber.Handler {
 		return c.JSON(Response{
 			Success: true,
 			Message: "successfully deleted hotel",
+		})
+	}
+}
+
+func (v *HotelHandler) Find() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ctx := c.Context()
+
+		city := c.Query("city")
+		starsStr := c.Query("stars")
+		arrange := c.Query("arrange")
+
+		if arrange != "" && (arrange != "asc" && arrange != "desc") {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Success: false,
+				Message: "failed to find hotels",
+				Error:   fmt.Sprintf("invalid arrange value: %v. supported: 'asc' and 'desc'", arrange),
+			})
+		}
+
+		var stars int64
+		if starsStr != "" {
+			var parseErr error
+			stars, parseErr = strconv.ParseInt(starsStr, 0, 32)
+			if parseErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Success: false,
+					Message: "failed to find hotels",
+					Error:   fmt.Sprintf("failed to parse stars%v", parseErr),
+				})
+			}
+			if stars < 1 || stars > 5 {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Success: false,
+					Message: "failed to find hotels",
+					Error:   "invalid value stars. supported range 1-5 stars",
+				})
+			}
+		}
+
+		hotels, err := v.HotelUsecase.GetWithParams(ctx, city, int32(stars), arrange != "", arrange == "asc")
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Success: false,
+				Message: "failed to find hotels",
+				Error:   fmt.Sprintf("%v", err),
+			})
+		}
+
+		return c.JSON(Response{
+			Success: true,
+			Message: "successfully found hotels",
+			Data:    hotels,
 		})
 	}
 }

@@ -16,6 +16,7 @@ type HotelRepository interface {
 	UpdateHotel(ctx context.Context, hotel *hotel.Hotel) error
 	DeleteHotel(ctx context.Context, hotelUuid uuid.UUID) error
 	GetHotel(ctx context.Context, hotelUuid uuid.UUID) (*hotel.Hotel, error)
+	GetHotelWithParams(ctx context.Context, city string, stars int32) ([]hotel.Hotel, error)
 }
 
 type hotelRepo struct {
@@ -98,12 +99,42 @@ func (v *hotelRepo) GetHotel(ctx context.Context, hotelUuid uuid.UUID) (*hotel.H
 
 	collection := v.getCollection()
 
-	var hotel hotel.Hotel
+	var foundedHotel hotel.Hotel
 
-	err := collection.FindOne(dbCtx, bson.D{{Key: "_id", Value: hotelUuid}}).Decode(&hotel)
+	err := collection.FindOne(dbCtx, bson.D{{Key: "_id", Value: hotelUuid}}).Decode(&foundedHotel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find hotel: %v", err)
 	}
 
-	return &hotel, nil
+	return &foundedHotel, nil
+}
+
+func (v *hotelRepo) GetHotelWithParams(ctx context.Context, city string, stars int32) ([]hotel.Hotel, error) {
+	dbCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	collection := v.getCollection()
+
+	findParams := bson.D{}
+
+	if city != "" {
+		findParams = append(findParams, bson.E{Key: "city", Value: city})
+	}
+
+	if stars > 0 {
+		findParams = append(findParams, bson.E{Key: "stars", Value: stars})
+	}
+
+	cursor, err := collection.Find(dbCtx, findParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find hotels: %v", err)
+	}
+
+	var hotels []hotel.Hotel
+
+	if err := cursor.All(dbCtx, &hotels); err != nil {
+		return nil, fmt.Errorf("failed to decode hotels: %v", err)
+	}
+
+	return hotels, nil
 }

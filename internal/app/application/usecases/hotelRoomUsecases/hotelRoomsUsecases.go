@@ -2,6 +2,7 @@ package hotelroomusecases
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ type HotelRoomUsecases interface {
 	Update(ctx context.Context, newHotelRoomData *hotelroom.HotelRoom) error
 	Delete(ctx context.Context, hotelRoomUuid uuid.UUID) error
 	Get(ctx context.Context, hotelRoomUuid uuid.UUID) (*hotelroom.HotelRoom, error)
+	GetWithParams(ctx context.Context, hotelRoomFirstFilter, hotelRoomSecondFilter *hotelroom.HotelRoom, needSort, isAsc bool) ([]hotelroom.HotelRoom, error)
 }
 
 type hotelRoomUsecase struct {
@@ -78,4 +80,28 @@ func (v *hotelRoomUsecase) Get(ctx context.Context, hotelRoomUuid uuid.UUID) (*h
 	}
 
 	return hotel, nil
+}
+
+func (v *hotelRoomUsecase) GetWithParams(ctx context.Context, hotelRoomFirstFilter, hotelRoomSecondFilter *hotelroom.HotelRoom, needSort, isAsc bool) ([]hotelroom.HotelRoom, error) {
+	usecaseCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	hotelRooms, err := v.hotelRoomRepo.GetHotelRoomsWithParams(usecaseCtx, hotelRoomFirstFilter, hotelRoomSecondFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	if needSort {
+		if isAsc {
+			sort.Slice(hotelRooms, func(i, j int) bool {
+				return *hotelRooms[i].Value < *hotelRooms[j].Value
+			})
+		} else {
+			sort.Slice(hotelRooms, func(i, j int) bool {
+				return *hotelRooms[i].Value > *hotelRooms[j].Value
+			})
+		}
+	}
+
+	return hotelRooms, nil
 }
