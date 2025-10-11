@@ -22,7 +22,7 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 	hotelApi := api.Group("/hotel")
 	hotelRoomApi := api.Group("/hotel-room")
 
-	adminApi := api.Group("/admin")
+	adminApi := api.Group("/admin", CheckJwtMiddleware(cfg.JWTRepo, true))
 	adminHotelApi := adminApi.Group("/hotel")
 	adminHotelRoomApi := adminApi.Group("/hotel-room")
 
@@ -38,22 +38,27 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 		HotelRoomUsecase: cfg.HotelRoomUsecases,
 	}
 
+	rentHandler := handler.RentHandler{
+		RentUsecase: cfg.RentUsecases,
+	}
+
 	userApi.Get("/register", userHandler.Register())                                         // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴🔴🔴
 	userApi.Get("/login", userHandler.Login())                                               // POST сделать потом !!!!!!!!!!!!!  🔴🔴🔴
-	userApi.Get("/rename", CheckJwtMiddleware(cfg.JWTREpo, false), userHandler.ChangeName()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	userApi.Get("/rename", CheckJwtMiddleware(cfg.JWTRepo, false), userHandler.ChangeName()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 
 	hotelApi.Get("/find", hotelHandler.Find())
 
 	hotelRoomApi.Get("/find", hotelRoomHandler.Find())
+	hotelRoomApi.Get("/rent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Create())
 
 	// 5da2255a-1ce7-4427-ad44-862165ebf9d7
-	adminHotelApi.Get("/create", CheckJwtMiddleware(cfg.JWTREpo, true), hotelHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	adminHotelApi.Get("/update", CheckJwtMiddleware(cfg.JWTREpo, true), hotelHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	adminHotelApi.Get("/delete", CheckJwtMiddleware(cfg.JWTREpo, true), hotelHandler.Delete()) // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminHotelApi.Get("/create", hotelHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminHotelApi.Get("/update", hotelHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminHotelApi.Get("/delete", hotelHandler.Delete()) // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 
-	adminHotelRoomApi.Get("/create", CheckJwtMiddleware(cfg.JWTREpo, true), hotelRoomHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	adminHotelRoomApi.Get("/update", CheckJwtMiddleware(cfg.JWTREpo, true), hotelRoomHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	adminHotelRoomApi.Get("/delete", CheckJwtMiddleware(cfg.JWTREpo, true), hotelRoomHandler.Delete()) // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminHotelRoomApi.Get("/create", hotelRoomHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminHotelRoomApi.Get("/update", hotelRoomHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminHotelRoomApi.Get("/delete", hotelRoomHandler.Delete()) // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 
 	return app
 }

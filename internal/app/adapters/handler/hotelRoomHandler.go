@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,49 +14,13 @@ type HotelRoomHandler struct {
 	HotelRoomUsecase hotelroomusecases.HotelRoomUsecases
 }
 
-func ParseHotelRoomParams(hotelUuidStr, dateFromStr, dateToStr, daysStr, roomsStr, typeStr, amountPeopleStr, valueStr string, allRequired bool, oldHotelRoom *hotelroom.HotelRoom) error {
+func ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr string, allRequired bool, oldHotelRoom *hotelroom.HotelRoom) error {
 	if allRequired || hotelUuidStr != "" {
 		hotelUuid, parseErr := uuid.Parse(hotelUuidStr)
 		if parseErr != nil {
 			return fmt.Errorf("failed to parse hotel id: %v", parseErr)
 		}
 		oldHotelRoom.HotelUuid = hotelUuid
-	}
-
-	if allRequired || dateFromStr != "" {
-		dateFrom, parseErr := strconv.ParseInt(dateFromStr, 0, 64)
-		if parseErr != nil {
-			return fmt.Errorf("failed to parse date from: %v", parseErr)
-		}
-		if dateFrom < 0 {
-			return fmt.Errorf("value 'date to' must be equal or greater than zero")
-		}
-		oldHotelRoom.DateFrom = &dateFrom
-	}
-
-	if allRequired || dateToStr != "" {
-		dateTo, parseErr := strconv.ParseUint(dateToStr, 0, 64)
-		if parseErr != nil {
-			return fmt.Errorf("failed to parse date to: %v", parseErr)
-		}
-		if dateTo == 0 {
-			return fmt.Errorf("value 'date 'to' must be greater than zero")
-		}
-		if int64(dateTo) < *oldHotelRoom.DateFrom {
-			return fmt.Errorf("value 'date 'to' must be greater than value 'date from'")
-		}
-		oldHotelRoom.DateTo = dateTo
-	}
-
-	if allRequired || daysStr != "" {
-		days, parseErr := strconv.ParseUint(daysStr, 0, 32)
-		if parseErr != nil {
-			return fmt.Errorf("failed to parse days: %v", parseErr)
-		}
-		if days == 0 {
-			return fmt.Errorf("value 'days' must be greater than zero")
-		}
-		oldHotelRoom.Days = uint32(days)
 	}
 
 	if allRequired || roomsStr != "" {
@@ -116,26 +79,23 @@ func (v *HotelRoomHandler) Create() fiber.Handler {
 		ctx := c.Context()
 
 		hotelUuidStr := c.Query("hotel-id")
-		dateFromStr := c.Query("date-from")
-		dateToStr := c.Query("date-to")
-		daysStr := c.Query("days")
 		roomsStr := c.Query("rooms")
 		typeStr := c.Query("type")
 		amountPeopleStr := c.Query("amount-people")
 		valueStr := c.Query("value")
 
-		if hotelUuidStr == "" || dateFromStr == "" || dateToStr == "" || daysStr == "" || roomsStr == "" || typeStr == "" || amountPeopleStr == "" || valueStr == "" {
+		if hotelUuidStr == "" || roomsStr == "" || typeStr == "" || amountPeopleStr == "" || valueStr == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
 				Message: "failed to create hotel room",
-				Error:   "hotel id, date from, date to, days, rooms, type, amount people and value are required",
+				Error:   "hotel id, rooms, type, amount people and value are required",
 			})
 		}
 
 		var hotelRoom hotelroom.HotelRoom
 		hotelRoom.Uuid = uuid.New()
 
-		err := ParseHotelRoomParams(hotelUuidStr, dateFromStr, dateToStr, daysStr, roomsStr, typeStr, amountPeopleStr, valueStr, true, &hotelRoom)
+		err := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, true, &hotelRoom)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
@@ -166,9 +126,6 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 
 		hotelRoomUuidStr := c.Query("id")
 		hotelUuidStr := c.Query("new-hotel-id")
-		dateFromStr := c.Query("new-date-from")
-		dateToStr := c.Query("new-date-to")
-		daysStr := c.Query("new-days")
 		roomsStr := c.Query("new-rooms")
 		typeStr := c.Query("new-type")
 		amountPeopleStr := c.Query("new-amount-people")
@@ -196,7 +153,7 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 			})
 		}
 
-		err := ParseHotelRoomParams(hotelUuidStr, dateFromStr, dateToStr, daysStr, roomsStr, typeStr, amountPeopleStr, valueStr, false, foundedHotelRoom)
+		err := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, false, foundedHotelRoom)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
@@ -275,6 +232,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 
 		typeFirstStr := c.Query("type-first")
 		typeSecondStr := c.Query("type-second")
+		absoluteType := c.Query("type")
 
 		amountPeopleFromStr := c.Query("amount-people-from")
 		amountPeopleToStr := c.Query("amount-people-to")
@@ -284,18 +242,91 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 
 		arrange := c.Query("arrange")
 
+		if absoluteType != "" {
+			typeFirstStr = absoluteType
+		}
+
+		if dateToStr != "" && daysStr != "" {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Success: false,
+				Message: "failed to find hotel room",
+				Error:   "you can choose only 'date-from' + 'date-to' or 'date-from' + 'days'",
+			})
+		}
+
+		if (dateFromStr != "" && (dateToStr == "" && daysStr == "")) || (dateFromStr == "" && (dateToStr != "" || daysStr != "")) {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Success: false,
+				Message: "failed to find hotel room",
+				Error:   "you must choose 'date-from' + 'date-to' or 'date-from' + 'days'",
+			})
+		}
+
 		if arrange != "" && (arrange != "asc" && arrange != "desc") {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
 				Message: "failed to find hotel rooms",
-				Error:   fmt.Sprintf("invalid arrange value: %v. supported: 'asc' and 'desc'", arrange),
+				Error:   fmt.Sprintf("invalid query value 'arrange': %v. supported: 'asc' and 'desc'", arrange),
 			})
+		}
+
+		var dateFrom *uint64
+		if dateFromStr != "" {
+			dateFr, parseErr := strconv.ParseUint(dateFromStr, 0, 64)
+			dateFrom = &dateFr
+			if parseErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Success: false,
+					Message: "failed to find hotel rooms",
+					Error:   fmt.Errorf("failed to parse query value 'date-from': %v", parseErr),
+				})
+			}
+		}
+
+		var dateTo *uint64
+		if dateToStr != "" {
+			dateT, parseErr := strconv.ParseUint(dateToStr, 0, 64)
+			dateTo = &dateT
+			if parseErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Success: false,
+					Message: "failed to find hotel rooms",
+					Error:   fmt.Errorf("failed to parse query value 'date-to': %v", parseErr),
+				})
+			}
+			if *dateTo < 1 {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Success: false,
+					Message: "failed to find hotel rooms",
+					Error:   fmt.Errorf("query value 'date-to' must be greater than zero"),
+				})
+			}
+		}
+
+		var days *uint64
+		if daysStr != "" {
+			day, parseErr := strconv.ParseUint(dateFromStr, 0, 64)
+			days = &day
+			if parseErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Success: false,
+					Message: "failed to find hotel rooms",
+					Error:   fmt.Errorf("failed to parse query value 'days': %v", parseErr),
+				})
+			}
+			if *days < 1 {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Success: false,
+					Message: "failed to find hotel rooms",
+					Error:   fmt.Errorf("query value 'days' must be greater than zero"),
+				})
+			}
 		}
 
 		var hotelRoomFirstFilter hotelroom.HotelRoom
 		var hotelRoomSecondFilter hotelroom.HotelRoom
 
-		parseFirstFilterErr := ParseHotelRoomParams(hotelUuidStr, dateFromStr, dateToStr, daysStr, roomsFromStr, typeFirstStr, amountPeopleFromStr, valueFromStr, false, &hotelRoomFirstFilter)
+		parseFirstFilterErr := ParseHotelRoomParams(hotelUuidStr, roomsFromStr, typeFirstStr, amountPeopleFromStr, valueFromStr, false, &hotelRoomFirstFilter)
 		if parseFirstFilterErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
@@ -304,7 +335,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 			})
 		}
 
-		parseSecondFilterErr := ParseHotelRoomParams(hotelUuidStr, dateFromStr, dateToStr, daysStr, roomsToStr, typeSecondStr, amountPeopleToStr, valueToStr, false, &hotelRoomSecondFilter)
+		parseSecondFilterErr := ParseHotelRoomParams(hotelUuidStr, roomsToStr, typeSecondStr, amountPeopleToStr, valueToStr, false, &hotelRoomSecondFilter)
 		if parseSecondFilterErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
@@ -313,24 +344,23 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 			})
 		}
 
-		log.Print(hotelRoomFirstFilter.AmountPeople)
-		log.Print(hotelRoomSecondFilter.AmountPeople)
-
-		if hotelRoomFirstFilter.Rooms > hotelRoomSecondFilter.Rooms ||
+		if roomsFromStr != "" && roomsToStr != "" && hotelRoomFirstFilter.Rooms > hotelRoomSecondFilter.Rooms ||
 			((hotelRoomFirstFilter.Value != nil && hotelRoomSecondFilter.Value != nil) && *hotelRoomFirstFilter.Value > *hotelRoomSecondFilter.Value) ||
-			hotelRoomFirstFilter.AmountPeople > hotelRoomSecondFilter.AmountPeople {
+			amountPeopleFromStr != "" && amountPeopleToStr != "" && hotelRoomFirstFilter.AmountPeople > hotelRoomSecondFilter.AmountPeople ||
+			dateFrom != nil && dateTo != nil && *dateFrom > *dateTo {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
 				Message: "failed to find hotel rooms",
 				Error:   fmt.Sprintf("every value '*-to' must be greater or equal to value '*-from'"),
 			})
 		}
-		foundedHotelRooms, err := v.HotelRoomUsecase.GetWithParams(ctx, &hotelRoomFirstFilter, &hotelRoomSecondFilter, arrange != "", arrange == "asc")
+
+		foundedHotelRooms, err := v.HotelRoomUsecase.GetWithParams(ctx, &hotelRoomFirstFilter, &hotelRoomSecondFilter, dateFrom, dateTo, days, arrange != "", arrange == "asc")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Success: false,
 				Message: "failed to find hotel rooms",
-				Error:   fmt.Sprintf("%v", err),
+				Error:   fmt.Sprintf("usecase error: %v", err),
 			})
 		}
 

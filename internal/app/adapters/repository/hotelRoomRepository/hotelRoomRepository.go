@@ -65,12 +65,9 @@ func (v *hotelRoomRepo) UpdateHotelRoom(ctx context.Context, hotelRoom *hotelroo
 
 	update := bson.M{
 		"$set": bson.M{
-			"date_from":     hotelRoom.DateFrom,
-			"date_to":       hotelRoom.DateTo,
 			"hotel_uuid":    hotelRoom.HotelUuid,
 			"value":         hotelRoom.Value,
 			"rooms":         hotelRoom.Rooms,
-			"days":          hotelRoom.Days,
 			"type":          hotelRoom.Type,
 			"amount_people": hotelRoom.AmountPeople,
 		},
@@ -123,7 +120,29 @@ func (v *hotelRoomRepo) GetHotelRoomsWithParams(ctx context.Context, firstFilter
 	fmt.Printf("filter1: %+v\n", firstFilter)
 	fmt.Printf("filter2: %+v\n", secondFilter)
 
-	findParams := bson.D{}
+	findParams := ParseParamsToSearchFilter(firstFilter, secondFilter)
+	if len(findParams) == 0 {
+		findParams = bson.D{}
+	}
+
+	fmt.Printf("findParams: %+v\n", findParams)
+
+	cursor, err := collection.Find(dbCtx, findParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find hotel rooms: %v", err)
+	}
+
+	var hotelRooms []hotelroom.HotelRoom
+
+	if err := cursor.All(dbCtx, &hotelRooms); err != nil {
+		return nil, fmt.Errorf("failed to decode hotel rooms: %v", err)
+	}
+
+	return hotelRooms, nil
+}
+
+func ParseParamsToSearchFilter(firstFilter, secondFilter *hotelroom.HotelRoom) bson.D {
+	var findParams bson.D
 
 	if firstFilter.Rooms > 0 || secondFilter.Rooms > 0 {
 		rangeQuery := bson.D{}
@@ -134,8 +153,9 @@ func (v *hotelRoomRepo) GetHotelRoomsWithParams(ctx context.Context, firstFilter
 		if secondFilter.Rooms > 0 {
 			rangeQuery = append(rangeQuery, bson.E{Key: "$lte", Value: secondFilter.Rooms})
 		}
-
-		findParams = append(findParams, bson.E{Key: "rooms", Value: rangeQuery})
+		if len(rangeQuery) > 0 {
+			findParams = append(findParams, bson.E{Key: "rooms", Value: rangeQuery})
+		}
 	}
 
 	if firstFilter.Value != nil || secondFilter.Value != nil {
@@ -147,8 +167,9 @@ func (v *hotelRoomRepo) GetHotelRoomsWithParams(ctx context.Context, firstFilter
 		if secondFilter.Value != nil {
 			rangeQuery = append(rangeQuery, bson.E{Key: "$lte", Value: *secondFilter.Value})
 		}
-
-		findParams = append(findParams, bson.E{Key: "value", Value: rangeQuery})
+		if len(rangeQuery) > 0 {
+			findParams = append(findParams, bson.E{Key: "value", Value: rangeQuery})
+		}
 	}
 
 	if firstFilter.AmountPeople > 0 || secondFilter.AmountPeople > 0 {
@@ -160,26 +181,9 @@ func (v *hotelRoomRepo) GetHotelRoomsWithParams(ctx context.Context, firstFilter
 		if secondFilter.AmountPeople > 0 {
 			rangeQuery = append(rangeQuery, bson.E{Key: "$lte", Value: secondFilter.AmountPeople})
 		}
-
-		findParams = append(findParams, bson.E{Key: "amount_people", Value: rangeQuery})
-	}
-
-	if firstFilter.DateFrom != nil {
-		findParams = append(findParams, bson.E{
-			Key:   "date_from",
-			Value: bson.D{{Key: "$lte", Value: firstFilter.DateFrom}},
-		})
-	}
-
-	if firstFilter.DateTo > 0 {
-		findParams = append(findParams, bson.E{
-			Key:   "date_to",
-			Value: bson.D{{Key: "$gte", Value: firstFilter.DateTo}},
-		})
-	}
-
-	if firstFilter.Days > 0 {
-		findParams = append(findParams, bson.E{Key: "days", Value: firstFilter.Days})
+		if len(rangeQuery) > 0 {
+			findParams = append(findParams, bson.E{Key: "amount_people", Value: rangeQuery})
+		}
 	}
 
 	if firstFilter.Type != "" && secondFilter.Type != "" {
@@ -197,18 +201,5 @@ func (v *hotelRoomRepo) GetHotelRoomsWithParams(ctx context.Context, firstFilter
 		findParams = append(findParams, bson.E{Key: "hotel_uuid", Value: firstFilter.HotelUuid})
 	}
 
-	fmt.Printf("findParams: %+v\n", findParams)
-
-	cursor, err := collection.Find(dbCtx, findParams)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find hotel rooms: %v", err)
-	}
-
-	var hotelRooms []hotelroom.HotelRoom
-
-	if err := cursor.All(dbCtx, &hotelRooms); err != nil {
-		return nil, fmt.Errorf("failed to decode hotel rooms: %v", err)
-	}
-
-	return hotelRooms, nil
+	return findParams
 }

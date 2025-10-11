@@ -24,13 +24,13 @@ func (v *UserHandler) Register() fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
 				Message: "failed to register",
-				Error:   "name, email and password are required",
+				Error:   "query values 'name', 'email' and 'password' are required",
 			})
 		}
 
-		user := user.NewUser(name, email, password)
+		newUser := user.NewUser(name, email, password)
 
-		jwtCookie, user, err := v.UserUsecase.Register(ctx, user)
+		jwtCookie, newUser, err := v.UserUsecase.Register(ctx, newUser)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Success: false,
@@ -44,7 +44,7 @@ func (v *UserHandler) Register() fiber.Handler {
 		return c.JSON(Response{
 			Success: true,
 			Message: "successfully registered",
-			Data:    map[string]string{"Name": name, "Email": email, "Hashed password": user.Password, "Role": string(user.Role)},
+			Data:    newUser,
 		})
 	}
 }
