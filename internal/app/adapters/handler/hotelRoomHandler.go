@@ -14,11 +14,19 @@ type HotelRoomHandler struct {
 	HotelRoomUsecase hotelroomusecases.HotelRoomUsecases
 }
 
-func ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr string, allRequired bool, oldHotelRoom *hotelroom.HotelRoom) error {
+func ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, hotelRoomUuidStr string, allRequired bool, oldHotelRoom *hotelroom.HotelRoom) error {
+	if allRequired || hotelRoomUuidStr != "" {
+		hotelRoomUuid, parseErr := uuid.Parse(hotelRoomUuidStr)
+		if parseErr != nil {
+			return fmt.Errorf("failed to parse query value 'id': %v", parseErr)
+		}
+		oldHotelRoom.Uuid = hotelRoomUuid
+	}
+
 	if allRequired || hotelUuidStr != "" {
 		hotelUuid, parseErr := uuid.Parse(hotelUuidStr)
 		if parseErr != nil {
-			return fmt.Errorf("failed to parse hotel id: %v", parseErr)
+			return fmt.Errorf("failed to parse query value 'hotel-id': %v", parseErr)
 		}
 		oldHotelRoom.HotelUuid = hotelUuid
 	}
@@ -26,10 +34,10 @@ func ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valu
 	if allRequired || roomsStr != "" {
 		rooms, parseErr := strconv.ParseUint(roomsStr, 0, 32)
 		if parseErr != nil {
-			return fmt.Errorf("failed to parse rooms: %v", parseErr)
+			return fmt.Errorf("failed to parse query valuer 'rooms': %v", parseErr)
 		}
 		if rooms == 0 {
-			return fmt.Errorf("value 'rooms' must be greater than zero")
+			return fmt.Errorf("query value 'rooms' must be greater than zero")
 		}
 		oldHotelRoom.Rooms = uint32(rooms)
 	}
@@ -37,10 +45,10 @@ func ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valu
 	if allRequired || amountPeopleStr != "" {
 		amountPeople, parseErr := strconv.ParseUint(amountPeopleStr, 0, 32)
 		if parseErr != nil {
-			return fmt.Errorf("failed to parse amount of people: %v", parseErr)
+			return fmt.Errorf("failed to parse query value 'amount-people': %v", parseErr)
 		}
 		if amountPeople == 0 {
-			return fmt.Errorf("value 'amount people' must be greater than zero")
+			return fmt.Errorf("query value 'amount-people' must be greater than zero")
 		}
 		oldHotelRoom.AmountPeople = uint32(amountPeople)
 	}
@@ -48,10 +56,10 @@ func ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valu
 	if allRequired || valueStr != "" {
 		value, parseErr := strconv.ParseInt(valueStr, 0, 32)
 		if parseErr != nil {
-			return fmt.Errorf("failed to parse value: %v", parseErr)
+			return fmt.Errorf("failed to parse query value 'value': %v", parseErr)
 		}
 		if value < 0 {
-			return fmt.Errorf("value 'value' must be equal or greater than zero")
+			return fmt.Errorf("query value 'value' must be equal or greater than zero")
 		}
 		oldHotelRoom.Value = &value
 	}
@@ -66,7 +74,7 @@ func ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valu
 		case string(hotelroom.Premium):
 			Type = string(hotelroom.Premium)
 		default:
-			return fmt.Errorf("this type does not exist. exists: standard, large, premium")
+			return fmt.Errorf("value of query value 'type' is incorrect. pick any of: 'standard', 'large', 'premium'")
 		}
 		oldHotelRoom.Type = hotelroom.HotelType(Type)
 	}
@@ -88,14 +96,14 @@ func (v *HotelRoomHandler) Create() fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
 				Message: "failed to create hotel room",
-				Error:   "hotel id, rooms, type, amount people and value are required",
+				Error:   "query values 'hotel-id', 'rooms', 'type', 'amount-people' and 'value' are required",
 			})
 		}
 
 		var hotelRoom hotelroom.HotelRoom
 		hotelRoom.Uuid = uuid.New()
 
-		err := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, true, &hotelRoom)
+		err := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, hotelRoom.Uuid.String(), true, &hotelRoom)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
@@ -135,16 +143,16 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
 				Message: "failed to update hotel room",
-				Error:   "id (hotel room id) is required",
+				Error:   "query value 'id' is required",
 			})
 		}
 
-		hotelRoomUuid, parseErr := uuid.Parse(hotelRoomUuidStr)
-		if parseErr != nil {
-			return fmt.Errorf("failed to parse id: %v", parseErr)
-		}
+		var foundedHotelRoom hotelroom.HotelRoom
 
-		foundedHotelRoom, getErr := v.HotelRoomUsecase.Get(ctx, hotelRoomUuid)
+		err := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, hotelRoomUuidStr, false, &foundedHotelRoom)
+
+		gottenHotelRoom, getErr := v.HotelRoomUsecase.Get(ctx, foundedHotelRoom.Uuid)
+		foundedHotelRoom = *gottenHotelRoom
 		if getErr != nil {
 			return c.Status(fiber.StatusNotFound).JSON(Response{
 				Success: false,
@@ -153,16 +161,15 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 			})
 		}
 
-		err := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, false, foundedHotelRoom)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
-				Message: "failed to create hotel room",
+				Message: "failed to update hotel room",
 				Error:   fmt.Sprintf("%v", err),
 			})
 		}
 
-		if err := v.HotelRoomUsecase.Update(ctx, foundedHotelRoom); err != nil {
+		if err := v.HotelRoomUsecase.Update(ctx, &foundedHotelRoom); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Success: false,
 				Message: "failed to update hotel room",
@@ -188,7 +195,7 @@ func (v *HotelRoomHandler) Delete() fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
 				Message: "failed to delete hotel room",
-				Error:   "id is required",
+				Error:   "query value 'id' is required",
 			})
 		}
 
@@ -197,7 +204,7 @@ func (v *HotelRoomHandler) Delete() fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
 				Message: "failed to delete hotel room",
-				Error:   fmt.Sprintf("failed to parse id: %v", parseErr),
+				Error:   fmt.Sprintf("failed to parse query value 'id': %v", parseErr),
 			})
 		}
 
@@ -221,6 +228,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 		ctx := c.Context()
 
 		hotelUuidStr := c.Query("hotel-id")
+		hotelRoomUuidStr := c.Query("id")
 
 		dateFromStr := c.Query("date-from")
 		dateToStr := c.Query("date-to")
@@ -273,12 +281,13 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 		var dateFrom *uint64
 		if dateFromStr != "" {
 			dateFr, parseErr := strconv.ParseUint(dateFromStr, 0, 64)
+			fmt.Printf("date from: %v\n", dateFr)
 			dateFrom = &dateFr
 			if parseErr != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
-					Error:   fmt.Errorf("failed to parse query value 'date-from': %v", parseErr),
+					Error:   fmt.Sprintf("failed to parse query value 'date-from': %v", parseErr),
 				})
 			}
 		}
@@ -286,39 +295,41 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 		var dateTo *uint64
 		if dateToStr != "" {
 			dateT, parseErr := strconv.ParseUint(dateToStr, 0, 64)
+			fmt.Printf("date to: %v\n", dateT)
 			dateTo = &dateT
 			if parseErr != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
-					Error:   fmt.Errorf("failed to parse query value 'date-to': %v", parseErr),
+					Error:   fmt.Sprintf("failed to parse query value 'date-to': %v", parseErr),
 				})
 			}
 			if *dateTo < 1 {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
-					Error:   fmt.Errorf("query value 'date-to' must be greater than zero"),
+					Error:   fmt.Sprintf("query value 'date-to' must be greater than zero"),
 				})
 			}
 		}
 
 		var days *uint64
 		if daysStr != "" {
-			day, parseErr := strconv.ParseUint(dateFromStr, 0, 64)
+			day, parseErr := strconv.ParseUint(daysStr, 0, 64)
+			fmt.Printf("days: %v\n", day)
 			days = &day
 			if parseErr != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
-					Error:   fmt.Errorf("failed to parse query value 'days': %v", parseErr),
+					Error:   fmt.Sprintf("failed to parse query value 'days': %v", parseErr),
 				})
 			}
 			if *days < 1 {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
-					Error:   fmt.Errorf("query value 'days' must be greater than zero"),
+					Error:   fmt.Sprintf("query value 'days' must be greater than zero"),
 				})
 			}
 		}
@@ -326,7 +337,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 		var hotelRoomFirstFilter hotelroom.HotelRoom
 		var hotelRoomSecondFilter hotelroom.HotelRoom
 
-		parseFirstFilterErr := ParseHotelRoomParams(hotelUuidStr, roomsFromStr, typeFirstStr, amountPeopleFromStr, valueFromStr, false, &hotelRoomFirstFilter)
+		parseFirstFilterErr := ParseHotelRoomParams(hotelUuidStr, roomsFromStr, typeFirstStr, amountPeopleFromStr, valueFromStr, hotelRoomUuidStr, false, &hotelRoomFirstFilter)
 		if parseFirstFilterErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
@@ -335,7 +346,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 			})
 		}
 
-		parseSecondFilterErr := ParseHotelRoomParams(hotelUuidStr, roomsToStr, typeSecondStr, amountPeopleToStr, valueToStr, false, &hotelRoomSecondFilter)
+		parseSecondFilterErr := ParseHotelRoomParams(hotelUuidStr, roomsToStr, typeSecondStr, amountPeopleToStr, valueToStr, hotelRoomUuidStr, false, &hotelRoomSecondFilter)
 		if parseSecondFilterErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Success: false,
@@ -360,7 +371,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Success: false,
 				Message: "failed to find hotel rooms",
-				Error:   fmt.Sprintf("usecase error: %v", err),
+				Error:   fmt.Sprintf("%v", err),
 			})
 		}
 

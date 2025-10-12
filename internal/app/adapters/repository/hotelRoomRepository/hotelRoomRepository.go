@@ -144,6 +144,10 @@ func (v *hotelRoomRepo) GetHotelRoomsWithParams(ctx context.Context, firstFilter
 func ParseParamsToSearchFilter(firstFilter, secondFilter *hotelroom.HotelRoom) bson.D {
 	var findParams bson.D
 
+	if firstFilter.Uuid != uuid.Nil {
+		findParams = append(findParams, bson.E{Key: "_id", Value: firstFilter.Uuid})
+	}
+
 	if firstFilter.Rooms > 0 || secondFilter.Rooms > 0 {
 		rangeQuery := bson.D{}
 

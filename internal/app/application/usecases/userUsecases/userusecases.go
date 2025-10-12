@@ -16,7 +16,7 @@ import (
 
 type UserUsecases interface {
 	Register(ctx context.Context, user *user.User) (*fiber.Cookie, *user.User, error)
-	Login(ctx context.Context, email, password string) (*fiber.Cookie, error)
+	Login(ctx context.Context, email, password string) (*fiber.Cookie, *user.User, error)
 	ChangeName(ctx context.Context, userId uuid.UUID, newName string) error
 }
 
@@ -62,25 +62,25 @@ func (v *userUsecase) Register(ctx context.Context, user *user.User) (*fiber.Coo
 	return httputils.BuildCookie(jwtToken, 1), user, nil
 }
 
-func (v *userUsecase) Login(ctx context.Context, email, password string) (*fiber.Cookie, error) {
+func (v *userUsecase) Login(ctx context.Context, email, password string) (*fiber.Cookie, *user.User, error) {
 	usecaseCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
-	user, userErr := v.userRepo.GetUser(usecaseCtx, email)
+	foundUser, userErr := v.userRepo.GetUser(usecaseCtx, email)
 	if userErr != nil {
-		return nil, userErr
+		return nil, nil, userErr
 	}
 
-	if verifyErr := hashutils.VerifyPassword(password, user.Password); verifyErr != nil {
-		return nil, fmt.Errorf("failed to verify password: %v", verifyErr)
+	if verifyErr := hashutils.VerifyPassword(password, foundUser.Password); verifyErr != nil {
+		return nil, nil, fmt.Errorf("failed to verify password: %v", verifyErr)
 	}
 
-	jwtToken, jwtErr := v.jwtUtilsRepo.NewJwt(user.Uuid, user.Role)
+	jwtToken, jwtErr := v.jwtUtilsRepo.NewJwt(foundUser.Uuid, foundUser.Role)
 	if jwtErr != nil {
-		return nil, fmt.Errorf("failed to create jwt token: %v", jwtErr)
+		return nil, nil, fmt.Errorf("failed to create jwt token: %v", jwtErr)
 	}
 
-	return httputils.BuildCookie(jwtToken, 1), nil
+	return httputils.BuildCookie(jwtToken, 1), foundUser, nil
 }
 
 func (v *userUsecase) ChangeName(ctx context.Context, userId uuid.UUID, newName string) error {

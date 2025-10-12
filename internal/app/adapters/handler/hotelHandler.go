@@ -52,14 +52,14 @@ func (v *HotelHandler) Create() fiber.Handler {
 		if err := v.HotelUsecase.Create(ctx, newHotel); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Success: false,
-				Message: "failed to create hotel",
+				Message: "failed to create a hotel",
 				Error:   fmt.Sprintf("%v", err),
 			})
 		}
 
 		return c.JSON(Response{
 			Success: true,
-			Message: "successfully created hotel",
+			Message: "successfully created a hotel",
 			Data:    newHotel,
 		})
 	}
@@ -192,6 +192,20 @@ func (v *HotelHandler) Find() fiber.Handler {
 		city := c.Query("city")
 		starsStr := c.Query("stars")
 		arrange := c.Query("arrange")
+		hotelUuidStr := c.Query("id")
+
+		var hotelUuid uuid.UUID
+		if hotelUuidStr != "" {
+			hotelUuidParsed, parseHotelUuidErr := uuid.Parse(hotelUuidStr)
+			if parseHotelUuidErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Success: false,
+					Message: "failed to find hotel",
+					Error:   fmt.Sprintf("failed to parse query value 'id': %v", parseHotelUuidErr),
+				})
+			}
+			hotelUuid = hotelUuidParsed
+		}
 
 		if arrange != "" && (arrange != "asc" && arrange != "desc") {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
@@ -221,7 +235,7 @@ func (v *HotelHandler) Find() fiber.Handler {
 			}
 		}
 
-		foundedHotels, err := v.HotelUsecase.GetWithParams(ctx, city, int32(stars), arrange != "", arrange == "asc")
+		foundedHotels, err := v.HotelUsecase.GetWithParams(ctx, city, int32(stars), hotelUuid, arrange != "", arrange == "asc")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Success: false,

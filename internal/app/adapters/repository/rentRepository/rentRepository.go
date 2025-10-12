@@ -14,6 +14,8 @@ import (
 type RentRepository interface {
 	CreateRent(ctx context.Context, rent *rent.Rent) error
 	GetRentsByHotelRoomUuid(ctx context.Context, hotelRoomUuid uuid.UUID) ([]rent.Rent, error)
+	DeleteRent(ctx context.Context, rentUuid uuid.UUID) error
+	GetRent(ctx context.Context, rentUuid uuid.UUID) (*rent.Rent, error)
 }
 
 type rentRepo struct {
@@ -71,4 +73,38 @@ func (v *rentRepo) GetRentsByHotelRoomUuid(ctx context.Context, hotelRoomUuid uu
 	}
 
 	return rents, nil
+}
+
+func (v *rentRepo) GetRent(ctx context.Context, rentUuid uuid.UUID) (*rent.Rent, error) {
+	dbCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	collection := v.getCollection()
+
+	var foundedRent rent.Rent
+
+	err := collection.FindOne(dbCtx, bson.D{{Key: "_id", Value: rentUuid}}).Decode(&foundedRent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode rent: %v", err)
+	}
+
+	return &foundedRent, nil
+}
+
+func (v *rentRepo) DeleteRent(ctx context.Context, rentUuid uuid.UUID) error {
+	dbCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	collection := v.getCollection()
+
+	isSomethingDeleted, err := collection.DeleteOne(dbCtx, bson.D{{Key: "_id", Value: rentUuid}})
+	if err != nil {
+		return fmt.Errorf("failed to delete rent: %v", err)
+	}
+
+	if isSomethingDeleted.DeletedCount == 0 {
+		return fmt.Errorf("failed to delete rent: rent object not found")
+	}
+
+	return nil
 }

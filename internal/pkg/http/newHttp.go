@@ -50,6 +50,7 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 
 	hotelRoomApi.Get("/find", hotelRoomHandler.Find())
 	hotelRoomApi.Get("/rent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Create())
+	hotelRoomApi.Get("/unrent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Delete())
 
 	// 5da2255a-1ce7-4427-ad44-862165ebf9d7
 	adminHotelApi.Get("/create", hotelHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
@@ -69,7 +70,7 @@ func CheckJwtMiddleware(jwtRepo jwtutils.JwtRepository, adminOnly bool) fiber.Ha
 		if jwtToken == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(handler.Response{
 				Success: false,
-				Message: "login before be proceeed",
+				Message: "login before be processed",
 				Error:   "unauthorized",
 			})
 		}
@@ -83,8 +84,9 @@ func CheckJwtMiddleware(jwtRepo jwtutils.JwtRepository, adminOnly bool) fiber.Ha
 			})
 		}
 
-		if adminOnly && claims["role"] != user.RoleAdmin {
-			return c.Status(fiber.StatusUnauthorized).JSON(handler.Response{
+		fmt.Println(claims["role"])
+		if adminOnly && claims["role"] != string(user.RoleAdmin) {
+			return c.Status(fiber.StatusForbidden).JSON(handler.Response{
 				Success: false,
 				Message: "no permission",
 			})

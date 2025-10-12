@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	flog "github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	rentusecases "github.com/rom6n/otello/internal/app/application/usecases/rentusecases"
 	"github.com/rom6n/otello/internal/app/domain/rent"
@@ -22,6 +23,17 @@ func (v *RentHandler) Create() fiber.Handler {
 		dateFromStr := c.Query("date-from")
 		dateToStr := c.Query("date-to")
 		daysStr := c.Query("days")
+
+		userUuidStr := c.Locals("id").(string)
+		userUuid, parseUserUuidErr := uuid.Parse(userUuidStr)
+		if parseUserUuidErr != nil {
+			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseUserUuidErr)
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Success: false,
+				Message: "failed to create rent",
+				Error:   fmt.Sprintf("failed to parse user uuid %s", parseUserUuidErr),
+			})
+		}
 
 		if hotelRoomUuidStr == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
@@ -111,7 +123,15 @@ func (v *RentHandler) Create() fiber.Handler {
 			dateTo = dateFrom + uint64(days)*24*60*60
 		}
 
-		hotelRoomRent := rent.NewRent(hotelRoomUuid, dateFrom, dateTo)
+		if dateFrom > dateTo {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Success: false,
+				Message: "failed to rent",
+				Error:   fmt.Sprintf("query value 'date-from' must be greater than 'date-to'"),
+			})
+		}
+
+		hotelRoomRent := rent.NewRent(hotelRoomUuid, userUuid, dateFrom, dateTo)
 
 		if err := v.RentUsecase.Create(ctx, hotelRoomRent); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
@@ -125,6 +145,57 @@ func (v *RentHandler) Create() fiber.Handler {
 			Success: true,
 			Message: "successfully created rent",
 			Data:    hotelRoomRent,
+		})
+	}
+}
+
+func (v *RentHandler) Delete() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ctx := c.Context()
+
+		rentUuidStr := c.Query("rent-id")
+
+		userRole := c.Locals("role").(string)
+		userUuidStr := c.Locals("id").(string)
+
+		userUuid, parseUserUuidErr := uuid.Parse(userUuidStr)
+		if parseUserUuidErr != nil {
+			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseUserUuidErr)
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Success: false,
+				Message: "failed to delete",
+				Error:   fmt.Sprintf("failed to parse user uuid from jwt: %v", parseUserUuidErr),
+			})
+		}
+
+		if rentUuidStr == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Success: false,
+				Message: "failed to delete rent",
+				Error:   "query value 'rent-id' is required",
+			})
+		}
+
+		rentUuid, parseErr := uuid.Parse(rentUuidStr)
+		if parseErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Success: false,
+				Message: "failed to delete rent",
+				Error:   fmt.Sprintf("failed to parse query value 'rent-id': %v", parseErr),
+			})
+		}
+
+		if err := v.RentUsecase.Delete(ctx, rentUuid, userUuid, userRole); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Success: false,
+				Message: "failed to delete rent",
+				Error:   fmt.Sprintf("%v", err),
+			})
+		}
+
+		return c.Status(fiber.StatusOK).JSON(Response{
+			Success: true,
+			Message: "successfully deleted rent",
 		})
 	}
 }

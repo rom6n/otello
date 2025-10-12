@@ -2,8 +2,10 @@ package handler
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/gofiber/fiber/v2"
+	flog "github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	userusecases "github.com/rom6n/otello/internal/app/application/usecases/userusecases"
 	"github.com/rom6n/otello/internal/app/domain/user"
@@ -11,6 +13,12 @@ import (
 
 type UserHandler struct {
 	UserUsecase userusecases.UserUsecases
+}
+
+func IsEmailCorrect(email string) bool {
+	regex := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
+	re := regexp.MustCompile(regex)
+	return re.MatchString(email)
 }
 
 func (v *UserHandler) Register() fiber.Handler {
@@ -25,6 +33,14 @@ func (v *UserHandler) Register() fiber.Handler {
 				Success: false,
 				Message: "failed to register",
 				Error:   "query values 'name', 'email' and 'password' are required",
+			})
+		}
+
+		if !IsEmailCorrect(email) {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Success: false,
+				Message: "failed to register",
+				Error:   "invalid email",
 			})
 		}
 
@@ -63,7 +79,15 @@ func (v *UserHandler) Login() fiber.Handler {
 			})
 		}
 
-		jwtCookie, err := v.UserUsecase.Login(ctx, email, password)
+		if !IsEmailCorrect(email) {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Success: false,
+				Message: "failed to login",
+				Error:   "invalid email",
+			})
+		}
+
+		jwtCookie, foundUser, err := v.UserUsecase.Login(ctx, email, password)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Success: false,
@@ -77,6 +101,7 @@ func (v *UserHandler) Login() fiber.Handler {
 		return c.JSON(Response{
 			Success: true,
 			Message: "successfully logged in",
+			Data:    foundUser,
 		})
 	}
 }
@@ -89,6 +114,7 @@ func (v *UserHandler) ChangeName() fiber.Handler {
 		userIdStr := c.Locals("id").(string)
 		userId, parseErr := uuid.Parse(userIdStr)
 		if parseErr != nil {
+			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseErr)
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Success: false,
 				Message: "failed to change a name",

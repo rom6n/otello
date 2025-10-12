@@ -15,7 +15,7 @@ type HotelUsecases interface {
 	Update(ctx context.Context, newHotelData *hotel.Hotel) error
 	Delete(ctx context.Context, hotelUuid uuid.UUID) error
 	Get(ctx context.Context, hotelUuid uuid.UUID) (*hotel.Hotel, error)
-	GetWithParams(ctx context.Context, city string, stars int32, needSort, isAsc bool) ([]hotel.Hotel, error)
+	GetWithParams(ctx context.Context, city string, stars int32, hotelUuid uuid.UUID, needSort, isAsc bool) ([]hotel.Hotel, error)
 }
 
 type hotelUsecase struct {
@@ -82,11 +82,11 @@ func (v *hotelUsecase) Get(ctx context.Context, hotelUuid uuid.UUID) (*hotel.Hot
 	return foundHotel, nil
 }
 
-func (v *hotelUsecase) GetWithParams(ctx context.Context, city string, stars int32, needSort, isAsc bool) ([]hotel.Hotel, error) {
+func (v *hotelUsecase) GetWithParams(ctx context.Context, city string, stars int32, hotelUuid uuid.UUID, needSort, isAsc bool) ([]hotel.Hotel, error) {
 	usecaseCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
-	hotels, err := v.hotelRepo.GetHotelWithParams(usecaseCtx, city, stars)
+	hotels, err := v.hotelRepo.GetHotelWithParams(usecaseCtx, city, stars, hotelUuid)
 	if err != nil {
 		return nil, err
 	}

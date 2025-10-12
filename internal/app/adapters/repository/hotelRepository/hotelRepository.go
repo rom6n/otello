@@ -16,7 +16,7 @@ type HotelRepository interface {
 	UpdateHotel(ctx context.Context, hotel *hotel.Hotel) error
 	DeleteHotel(ctx context.Context, hotelUuid uuid.UUID) error
 	GetHotel(ctx context.Context, hotelUuid uuid.UUID) (*hotel.Hotel, error)
-	GetHotelWithParams(ctx context.Context, city string, stars int32) ([]hotel.Hotel, error)
+	GetHotelWithParams(ctx context.Context, city string, stars int32, hotelUuid uuid.UUID) ([]hotel.Hotel, error)
 }
 
 type hotelRepo struct {
@@ -109,7 +109,7 @@ func (v *hotelRepo) GetHotel(ctx context.Context, hotelUuid uuid.UUID) (*hotel.H
 	return &foundedHotel, nil
 }
 
-func (v *hotelRepo) GetHotelWithParams(ctx context.Context, city string, stars int32) ([]hotel.Hotel, error) {
+func (v *hotelRepo) GetHotelWithParams(ctx context.Context, city string, stars int32, hotelUuid uuid.UUID) ([]hotel.Hotel, error) {
 	dbCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
@@ -123,6 +123,10 @@ func (v *hotelRepo) GetHotelWithParams(ctx context.Context, city string, stars i
 
 	if stars > 0 {
 		findParams = append(findParams, bson.E{Key: "stars", Value: stars})
+	}
+
+	if hotelUuid != uuid.Nil {
+		findParams = append(findParams, bson.E{Key: "_id", Value: hotelUuid})
 	}
 
 	cursor, err := collection.Find(dbCtx, findParams)

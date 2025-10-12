@@ -33,7 +33,7 @@ func New() JwtRepository {
 
 func (v *JwtRepo) NewJwt(uuid uuid.UUID, role user.UserRole) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": uuid,
+		"user_id": uuid.String(),
 		"exp":     time.Now().Add(time.Minute * 10).Unix(),
 		"iat":     time.Now().Unix(),
 		"iss":     "otello",
