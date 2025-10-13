@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	rentrepository "github.com/rom6n/otello/internal/app/adapters/repository/rentrepository"
+	"github.com/rom6n/otello/internal/app/adapters/repository/rentrepository"
 	"github.com/rom6n/otello/internal/app/domain/rent"
 	"github.com/rom6n/otello/internal/app/domain/user"
 )

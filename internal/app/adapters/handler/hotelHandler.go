@@ -6,255 +6,167 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	hotelusecases "github.com/rom6n/otello/internal/app/application/usecases/hotelusecases"
+	"github.com/rom6n/otello/internal/app/application/usecases/hotelusecases"
 	"github.com/rom6n/otello/internal/app/domain/hotel"
+	"github.com/rom6n/otello/internal/utils/httputils"
 )
 
 type HotelHandler struct {
 	HotelUsecase hotelusecases.HotelUsecases
 }
 
+func parseHotelParams(c *fiber.Ctx, allRequired bool, parseTo *hotel.Hotel) (*string, error) {
+	city := c.Query("city")
+	starsStr := c.Query("stars")
+	arrangeStr := c.Query("arrange")
+	uuidStr := c.Query("id")
+	name := c.Query("name")
+
+	if allRequired && (city == "" || starsStr == "" || name == "") {
+		return nil, fmt.Errorf("query values 'city', 'stars', 'name' are required'")
+	}
+
+	if allRequired {
+		parseTo.Uuid = uuid.New()
+	}
+
+	var arrange *string
+	if arrangeStr != "" {
+		if arrangeStr != "asc" && arrangeStr != "desc" {
+			return nil, fmt.Errorf("invalid value of query value 'arrange', must be 'asc' or 'desc'")
+		}
+
+		arrange = &arrangeStr
+	}
+
+	if uuidStr != "" {
+		uuidParsed, parseTicketUuidErr := uuid.Parse(uuidStr)
+		if parseTicketUuidErr != nil {
+			return nil, fmt.Errorf("failed to parse query value 'id': %v", parseTicketUuidErr)
+		}
+		parseTo.Uuid = uuidParsed
+	}
+
+	if city != "" {
+		parseTo.City = city
+	}
+	if name != "" {
+		parseTo.Name = name
+	}
+
+	if starsStr != "" {
+		starsParsed, parseStarsErr := strconv.ParseInt(starsStr, 0, 32)
+		if parseStarsErr != nil {
+			return nil, fmt.Errorf("failed to parse query value 'stars': %v", parseStarsErr)
+		}
+		if starsParsed < 1 || starsParsed > 5 {
+			return nil, fmt.Errorf("invalid query value 'stars'. supported value in range 1-5")
+		}
+		parseTo.Stars = int32(starsParsed)
+	}
+
+	return arrange, nil
+}
+
 func (v *HotelHandler) Create() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
+		unsuccessMessage := "failed to create a hotel"
 
-		name := c.Query("name")
-		city := c.Query("city")
-		starsStr := c.Query("stars")
+		var parsedHotel hotel.Hotel
 
-		if name == "" || city == "" || starsStr == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Success: false,
-				Message: "failed to create hotel",
-				Error:   "query values 'name', 'city' and 'stars' are required",
-			})
+		if _, parseErr := parseHotelParams(c, true, &parsedHotel); parseErr != nil {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parseErr), nil, fiber.StatusBadRequest)
 		}
 
-		stars, parseErr := strconv.ParseInt(starsStr, 0, 32)
-		if parseErr != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Success: false,
-				Message: "failed to create hotel",
-				Error:   fmt.Sprintf("%v", parseErr),
-			})
+		if err := v.HotelUsecase.Create(ctx, &parsedHotel); err != nil {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
-		if stars < 1 || stars > 5 {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Success: false,
-				Message: "failed to create hotel",
-				Error:   "invalid query value 'stars'. supported value in range 1-5",
-			})
-		}
-
-		newHotel := hotel.NewHotel(name, city, int32(stars))
-
-		if err := v.HotelUsecase.Create(ctx, newHotel); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-				Success: false,
-				Message: "failed to create a hotel",
-				Error:   fmt.Sprintf("%v", err),
-			})
-		}
-
-		return c.JSON(Response{
-			Success: true,
-			Message: "successfully created a hotel",
-			Data:    newHotel,
-		})
+		return httputils.HandleSuccess(c, "successfully created the hotel", &parsedHotel)
 	}
 }
 
 func (v *HotelHandler) Update() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
+		unsuccessMessage := "failed to update the hotel"
 
-		hotelUuidStr := c.Query("id")
-		newName := c.Query("new-name")
-		newCity := c.Query("new-city")
-		newStarsStr := c.Query("new-stars")
-
-		if hotelUuidStr == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Success: false,
-				Message: "failed to update hotel",
-				Error:   "query value 'id' is required",
-			})
+		if c.Query("id") == "" {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "query value 'id' is required", nil, fiber.StatusBadRequest)
 		}
 
-		hotelUuid, parseErr := uuid.Parse(hotelUuidStr)
-		if parseErr != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Success: false,
-				Message: "failed to update hotel",
-				Error:   fmt.Sprintf("failed to parse query value 'id': %v", parseErr),
-			})
+		var parsedHotel hotel.Hotel
+		if _, parseErr := parseHotelParams(c, false, &parsedHotel); parseErr != nil {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parseErr), nil, fiber.StatusBadRequest)
 		}
 
-		var newStars int64
-		if newStarsStr != "" {
-			var parseIntErr error
-			newStars, parseIntErr = strconv.ParseInt(newStarsStr, 0, 32)
-			if parseIntErr != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
-					Success: false,
-					Message: "failed to update hotel",
-					Error:   fmt.Sprintf("failed to parse query value 'new-stars': %v", parseIntErr),
-				})
-			}
-
-			if newStars < 1 || newStars > 5 {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
-					Success: false,
-					Message: "failed to update hotel",
-					Error:   "invalid query value 'stars'. supported value in range 1-5",
-				})
-			}
-		}
-
-		foundedHotel, getErr := v.HotelUsecase.Get(ctx, hotelUuid)
+		foundHotel, getErr := v.HotelUsecase.Get(ctx, parsedHotel.Uuid)
 		if getErr != nil {
-			return c.Status(fiber.StatusNotFound).JSON(Response{
-				Success: false,
-				Message: "failed to update hotel",
-				Error:   fmt.Sprintf("failed to update hotel: %v", parseErr),
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "failed to get the hotel", getErr, fiber.StatusInternalServerError)
 		}
 
-		if newName != "" {
-			foundedHotel.Name = newName
-		}
-		if newCity != "" {
-			foundedHotel.City = newCity
-		}
-		if newStarsStr != "" {
-			foundedHotel.Stars = int32(newStars)
+		if _, parse2Err := parseHotelParams(c, false, foundHotel); parse2Err != nil {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parse2Err), nil, fiber.StatusBadRequest)
 		}
 
-		if err := v.HotelUsecase.Update(ctx, foundedHotel); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-				Success: false,
-				Message: "failed to update hotel",
-				Error:   fmt.Sprintf("%v", err),
-			})
+		if err := v.HotelUsecase.Update(ctx, foundHotel); err != nil {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
-		return c.JSON(Response{
-			Success: true,
-			Message: "successfully updated hotel",
-			Data:    foundedHotel,
-		})
+		return httputils.HandleSuccess(c, "successfully updated the hotel", foundHotel)
 	}
 }
 
 func (v *HotelHandler) Delete() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
+		unsuccessMessage := "failed to delete the hotel"
+
+		if c.Query("id") == "" {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "query value 'id' is required", nil, fiber.StatusBadRequest)
+		}
 
 		hotelUuidStr := c.Query("id")
 
 		if hotelUuidStr == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Success: false,
-				Message: "failed to delete hotel",
-				Error:   "query value 'id' is required",
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "query value 'id' is required", nil, fiber.StatusBadRequest)
 		}
 
 		hotelUuid, parseErr := uuid.Parse(hotelUuidStr)
 		if parseErr != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Success: false,
-				Message: "failed to delete hotel",
-				Error:   fmt.Sprintf("failed to parse query value 'id': %v", parseErr),
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("failed to parse query value 'id': %v", parseErr), nil, fiber.StatusBadRequest)
 		}
 
 		if err := v.HotelUsecase.Delete(ctx, hotelUuid); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-				Success: false,
-				Message: "failed to delete hotel",
-				Error:   fmt.Sprintf("%v", err),
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
-		return c.JSON(Response{
-			Success: true,
-			Message: "successfully deleted hotel",
-		})
+		return httputils.HandleSuccess(c, "successfully deleted the hotel", nil)
 	}
 }
 
 func (v *HotelHandler) Find() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
+		unsuccessMessage := "failed to find the hotel"
 
-		city := c.Query("city")
-		starsStr := c.Query("stars")
-		arrange := c.Query("arrange")
-		hotelUuidStr := c.Query("id")
+		var parsedHotel hotel.Hotel
 
-		var hotelUuid uuid.UUID
-		if hotelUuidStr != "" {
-			hotelUuidParsed, parseHotelUuidErr := uuid.Parse(hotelUuidStr)
-			if parseHotelUuidErr != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
-					Success: false,
-					Message: "failed to find hotel",
-					Error:   fmt.Sprintf("failed to parse query value 'id': %v", parseHotelUuidErr),
-				})
-			}
-			hotelUuid = hotelUuidParsed
+		arrange, parseErr := parseHotelParams(c, false, &parsedHotel)
+		if parseErr != nil {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parseErr), nil, fiber.StatusBadRequest)
 		}
 
-		if arrange != "" && (arrange != "asc" && arrange != "desc") {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Success: false,
-				Message: "failed to find hotels",
-				Error:   fmt.Sprintf("invalid query value 'arrange': %v. supported values: 'asc' and 'desc'", arrange),
-			})
-		}
-
-		var stars int64
-		if starsStr != "" {
-			var parseErr error
-			stars, parseErr = strconv.ParseInt(starsStr, 0, 32)
-			if parseErr != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
-					Success: false,
-					Message: "failed to find hotels",
-					Error:   fmt.Sprintf("failed to parse query value 'stars': %v", parseErr),
-				})
-			}
-			if stars < 1 || stars > 5 {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
-					Success: false,
-					Message: "failed to find hotels",
-					Error:   "invalid query value 'stars'. supported value in range 1-5",
-				})
-			}
-		}
-
-		foundedHotels, err := v.HotelUsecase.GetWithParams(ctx, city, int32(stars), hotelUuid, arrange != "", arrange == "asc")
+		foundHotels, err := v.HotelUsecase.GetWithParams(ctx, parsedHotel.City, parsedHotel.Stars, parsedHotel.Uuid, arrange != nil, arrange != nil && *arrange == "asc")
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-				Success: false,
-				Message: "failed to find hotels",
-				Error:   fmt.Sprintf("%v", err),
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parseErr), nil, fiber.StatusInternalServerError)
 		}
 
-		if len(foundedHotels) == 0 {
-			return c.Status(fiber.StatusNotFound).JSON(Response{
-				Success: false,
-				Message: "hotels not found",
-			})
+		if len(foundHotels) == 0 {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "hotels not found", nil, fiber.StatusNotFound)
 		}
 
-		return c.JSON(Response{
-			Success: true,
-			Message: "successfully found hotels",
-			Data:    foundedHotels,
-		})
+		return httputils.HandleSuccess(c, "successfully found hotels", foundHotels)
 	}
 }

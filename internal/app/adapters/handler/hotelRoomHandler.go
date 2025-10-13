@@ -6,8 +6,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	hotelroomusecases "github.com/rom6n/otello/internal/app/application/usecases/hotelroomusecases"
-	hotelroom "github.com/rom6n/otello/internal/app/domain/hotelroom"
+	"github.com/rom6n/otello/internal/app/application/usecases/hotelroomusecases"
+	"github.com/rom6n/otello/internal/app/domain/hotelroom"
+	"github.com/rom6n/otello/internal/utils/httputils"
 )
 
 type HotelRoomHandler struct {
@@ -93,7 +94,7 @@ func (v *HotelRoomHandler) Create() fiber.Handler {
 		valueStr := c.Query("value")
 
 		if hotelUuidStr == "" || roomsStr == "" || typeStr == "" || amountPeopleStr == "" || valueStr == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to create hotel room",
 				Error:   "query values 'hotel-id', 'rooms', 'type', 'amount-people' and 'value' are required",
@@ -105,7 +106,7 @@ func (v *HotelRoomHandler) Create() fiber.Handler {
 
 		err := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, hotelRoom.Uuid.String(), true, &hotelRoom)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to create hotel room",
 				Error:   fmt.Sprintf("%v", err),
@@ -113,14 +114,14 @@ func (v *HotelRoomHandler) Create() fiber.Handler {
 		}
 
 		if err := v.HotelRoomUsecase.Create(ctx, &hotelRoom); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to create hotel room",
 				Error:   fmt.Sprintf("%v", err),
 			})
 		}
 
-		return c.JSON(Response{
+		return c.JSON(httputils.Response{
 			Success: true,
 			Message: "successfully created hotel room",
 			Data:    hotelRoom,
@@ -140,7 +141,7 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 		valueStr := c.Query("new-value")
 
 		if hotelRoomUuidStr == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to update hotel room",
 				Error:   "query value 'id' is required",
@@ -154,7 +155,7 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 		gottenHotelRoom, getErr := v.HotelRoomUsecase.Get(ctx, foundedHotelRoom.Uuid)
 		foundedHotelRoom = *gottenHotelRoom
 		if getErr != nil {
-			return c.Status(fiber.StatusNotFound).JSON(Response{
+			return c.Status(fiber.StatusNotFound).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to update hotel room",
 				Error:   fmt.Sprintf("failed to get hotel room: %v", getErr),
@@ -162,7 +163,7 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 		}
 
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to update hotel room",
 				Error:   fmt.Sprintf("%v", err),
@@ -170,14 +171,14 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 		}
 
 		if err := v.HotelRoomUsecase.Update(ctx, &foundedHotelRoom); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to update hotel room",
 				Error:   fmt.Sprintf("%v", err),
 			})
 		}
 
-		return c.JSON(Response{
+		return c.JSON(httputils.Response{
 			Success: true,
 			Message: "successfully updated hotel room",
 			Data:    foundedHotelRoom,
@@ -192,7 +193,7 @@ func (v *HotelRoomHandler) Delete() fiber.Handler {
 		hotelRoomUuidStr := c.Query("id")
 
 		if hotelRoomUuidStr == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to delete hotel room",
 				Error:   "query value 'id' is required",
@@ -201,7 +202,7 @@ func (v *HotelRoomHandler) Delete() fiber.Handler {
 
 		hotelRoomUuid, parseErr := uuid.Parse(hotelRoomUuidStr)
 		if parseErr != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to delete hotel room",
 				Error:   fmt.Sprintf("failed to parse query value 'id': %v", parseErr),
@@ -209,14 +210,14 @@ func (v *HotelRoomHandler) Delete() fiber.Handler {
 		}
 
 		if err := v.HotelRoomUsecase.Delete(ctx, hotelRoomUuid); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to delete hotel room",
 				Error:   fmt.Sprintf("%v", err),
 			})
 		}
 
-		return c.JSON(Response{
+		return c.JSON(httputils.Response{
 			Success: true,
 			Message: "successfully deleted hotel room",
 		})
@@ -255,7 +256,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 		}
 
 		if dateToStr != "" && daysStr != "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to find hotel room",
 				Error:   "you can choose only 'date-from' + 'date-to' or 'date-from' + 'days'",
@@ -263,7 +264,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 		}
 
 		if (dateFromStr != "" && (dateToStr == "" && daysStr == "")) || (dateFromStr == "" && (dateToStr != "" || daysStr != "")) {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to find hotel room",
 				Error:   "you must choose 'date-from' + 'date-to' or 'date-from' + 'days'",
@@ -271,7 +272,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 		}
 
 		if arrange != "" && (arrange != "asc" && arrange != "desc") {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to find hotel rooms",
 				Error:   fmt.Sprintf("invalid query value 'arrange': %v. supported: 'asc' and 'desc'", arrange),
@@ -284,7 +285,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 			fmt.Printf("date from: %v\n", dateFr)
 			dateFrom = &dateFr
 			if parseErr != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
+				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
 					Error:   fmt.Sprintf("failed to parse query value 'date-from': %v", parseErr),
@@ -298,14 +299,14 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 			fmt.Printf("date to: %v\n", dateT)
 			dateTo = &dateT
 			if parseErr != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
+				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
 					Error:   fmt.Sprintf("failed to parse query value 'date-to': %v", parseErr),
 				})
 			}
 			if *dateTo < 1 {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
+				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
 					Error:   fmt.Sprintf("query value 'date-to' must be greater than zero"),
@@ -319,14 +320,14 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 			fmt.Printf("days: %v\n", day)
 			days = &day
 			if parseErr != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
+				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
 					Error:   fmt.Sprintf("failed to parse query value 'days': %v", parseErr),
 				})
 			}
 			if *days < 1 {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
+				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
 					Error:   fmt.Sprintf("query value 'days' must be greater than zero"),
@@ -339,7 +340,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 
 		parseFirstFilterErr := ParseHotelRoomParams(hotelUuidStr, roomsFromStr, typeFirstStr, amountPeopleFromStr, valueFromStr, hotelRoomUuidStr, false, &hotelRoomFirstFilter)
 		if parseFirstFilterErr != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to find hotel rooms",
 				Error:   fmt.Sprintf("failed to parse first filter: %v", parseFirstFilterErr),
@@ -348,7 +349,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 
 		parseSecondFilterErr := ParseHotelRoomParams(hotelUuidStr, roomsToStr, typeSecondStr, amountPeopleToStr, valueToStr, hotelRoomUuidStr, false, &hotelRoomSecondFilter)
 		if parseSecondFilterErr != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to find hotel rooms",
 				Error:   fmt.Sprintf("failed to parse second filter: %v", parseSecondFilterErr),
@@ -359,7 +360,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 			((hotelRoomFirstFilter.Value != nil && hotelRoomSecondFilter.Value != nil) && *hotelRoomFirstFilter.Value > *hotelRoomSecondFilter.Value) ||
 			amountPeopleFromStr != "" && amountPeopleToStr != "" && hotelRoomFirstFilter.AmountPeople > hotelRoomSecondFilter.AmountPeople ||
 			dateFrom != nil && dateTo != nil && *dateFrom > *dateTo {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to find hotel rooms",
 				Error:   fmt.Sprintf("every value '*-to' must be greater or equal to value '*-from'"),
@@ -368,7 +369,7 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 
 		foundedHotelRooms, err := v.HotelRoomUsecase.GetWithParams(ctx, &hotelRoomFirstFilter, &hotelRoomSecondFilter, dateFrom, dateTo, days, arrange != "", arrange == "asc")
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to find hotel rooms",
 				Error:   fmt.Sprintf("%v", err),
@@ -376,13 +377,13 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 		}
 
 		if len(foundedHotelRooms) == 0 {
-			return c.Status(fiber.StatusNotFound).JSON(Response{
+			return c.Status(fiber.StatusNotFound).JSON(httputils.Response{
 				Success: false,
 				Message: "hotel rooms not found",
 			})
 		}
 
-		return c.JSON(Response{
+		return c.JSON(httputils.Response{
 			Success: true,
 			Message: "successfully found hotel rooms",
 			Data:    foundedHotelRooms,

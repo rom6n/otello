@@ -9,7 +9,8 @@ import (
 	"github.com/rom6n/otello/internal/app/adapters/handler"
 	"github.com/rom6n/otello/internal/app/config"
 	"github.com/rom6n/otello/internal/app/domain/user"
-	jwtutils "github.com/rom6n/otello/internal/utils/jwtutils"
+	httputils "github.com/rom6n/otello/internal/utils/httputils"
+	"github.com/rom6n/otello/internal/utils/jwtutils"
 )
 
 func NewFiberApp(cfg config.Config) *fiber.App {
@@ -21,10 +22,12 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 	userApi := api.Group("/user")
 	hotelApi := api.Group("/hotel")
 	hotelRoomApi := api.Group("/hotel-room")
+	flightTicketApi := api.Group("/flight-ticket")
 
 	adminApi := api.Group("/admin", CheckJwtMiddleware(cfg.JWTRepo, true))
 	adminHotelApi := adminApi.Group("/hotel")
 	adminHotelRoomApi := adminApi.Group("/hotel-room")
+	adminFlightTicketApi := adminApi.Group("/flight-ticket")
 
 	userHandler := handler.UserHandler{
 		UserUsecase: cfg.UserUsecases,
@@ -42,6 +45,10 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 		RentUsecase: cfg.RentUsecases,
 	}
 
+	flightTicketHandler := handler.FlightTicketHandler{
+		FlightTicketUsecase: cfg.FlightTicketUsecases,
+	}
+
 	userApi.Get("/register", userHandler.Register())                                         // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴🔴🔴
 	userApi.Get("/login", userHandler.Login())                                               // POST сделать потом !!!!!!!!!!!!!  🔴🔴🔴
 	userApi.Get("/rename", CheckJwtMiddleware(cfg.JWTRepo, false), userHandler.ChangeName()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
@@ -52,6 +59,9 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 	hotelRoomApi.Get("/rent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Create())
 	hotelRoomApi.Get("/unrent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Delete())
 
+	//flightTicketApi.Get("/find", flightTicketHandler.Find())
+	flightTicketApi.Get("/buy", flightTicketHandler.Buy())
+
 	// 5da2255a-1ce7-4427-ad44-862165ebf9d7
 	adminHotelApi.Get("/create", hotelHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 	adminHotelApi.Get("/update", hotelHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
@@ -61,6 +71,10 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 	adminHotelRoomApi.Get("/update", hotelRoomHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 	adminHotelRoomApi.Get("/delete", hotelRoomHandler.Delete()) // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
 
+	adminFlightTicketApi.Get("/create", flightTicketHandler.Create())
+	adminFlightTicketApi.Get("/update", flightTicketHandler.Update())
+	adminFlightTicketApi.Get("/delete", flightTicketHandler.Delete())
+
 	return app
 }
 
@@ -68,28 +82,17 @@ func CheckJwtMiddleware(jwtRepo jwtutils.JwtRepository, adminOnly bool) fiber.Ha
 	return func(c *fiber.Ctx) error {
 		jwtToken := c.Cookies("jwtToken")
 		if jwtToken == "" {
-			return c.Status(fiber.StatusUnauthorized).JSON(handler.Response{
-				Success: false,
-				Message: "login before be processed",
-				Error:   "unauthorized",
-			})
+			return httputils.HandleUnsuccess(c, "login before be processed", "unauthorized", nil, fiber.StatusUnauthorized)
 		}
 
 		claims, err := jwtRepo.VerifyJwt(jwtToken)
 		if err != nil || claims["iss"] != "otello" {
-			return c.Status(fiber.StatusUnauthorized).JSON(handler.Response{
-				Success: false,
-				Message: "jwt token not verified or accepted",
-				Error:   fmt.Sprintf("%v-%v", err, claims["iss"]),
-			})
+			return httputils.HandleUnsuccess(c, "jwt token not verified or accepted", fmt.Sprintf("%v-%v", err, claims["iss"]), nil, fiber.StatusForbidden)
 		}
 
 		fmt.Println(claims["role"])
 		if adminOnly && claims["role"] != string(user.RoleAdmin) {
-			return c.Status(fiber.StatusForbidden).JSON(handler.Response{
-				Success: false,
-				Message: "no permission",
-			})
+			return httputils.HandleUnsuccess(c, "no permission", "", nil, fiber.StatusForbidden)
 		}
 
 		c.Locals("id", claims["user_id"])

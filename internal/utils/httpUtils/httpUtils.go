@@ -1,4 +1,4 @@
-package handler
+package httputils
 
 import (
 	"time"
@@ -13,7 +13,7 @@ type Response struct {
 	Error   interface{} `json:"error,omitempty"`
 }
 
-func handleUnsuccess(c *fiber.Ctx, message, err string, data interface{}, status int) error {
+func HandleUnsuccess(c *fiber.Ctx, message, err string, data interface{}, status int) error {
 	return c.Status(status).JSON(&Response{
 		Success: false,
 		Message: message,
@@ -22,7 +22,7 @@ func handleUnsuccess(c *fiber.Ctx, message, err string, data interface{}, status
 	})
 }
 
-func handleSuccess(c *fiber.Ctx, message string, data interface{}) error {
+func HandleSuccess(c *fiber.Ctx, message string, data interface{}) error {
 	return c.Status(fiber.StatusOK).JSON(&Response{
 		Success: true,
 		Message: message,
@@ -30,11 +30,11 @@ func handleSuccess(c *fiber.Ctx, message string, data interface{}) error {
 	})
 }
 
-func parseTimeZ(t string) (time.Time, error) {
+func ParseTimeZ(t string) (time.Time, error) {
 	return time.Parse("2006-01-02T15:04:05Z", t)
 }
 
-func queryOneOf(c *fiber.Ctx, keys ...string) string {
+func QueryOneOf(c *fiber.Ctx, keys ...string) string {
 	for _, k := range keys {
 		if v := c.Query(k); v != "" {
 			return v

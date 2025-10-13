@@ -4,7 +4,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// название. город. количество звезд
 type Hotel struct {
 	Uuid  uuid.UUID `json:"id" bson:"_id"`
 	Name  string    `json:"name" bson:"name"`

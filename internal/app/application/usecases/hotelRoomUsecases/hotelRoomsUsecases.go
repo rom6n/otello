@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	hotelroomrepository "github.com/rom6n/otello/internal/app/adapters/repository/hotelroomrepository"
-	rentrepository "github.com/rom6n/otello/internal/app/adapters/repository/rentrepository"
+	"github.com/rom6n/otello/internal/app/adapters/repository/rentrepository"
 	"github.com/rom6n/otello/internal/app/domain/hotelroom"
 )
 

@@ -12,7 +12,6 @@ const (
 	Premium  HotelType = "premium"
 )
 
-// дата аренды от и до. кол-во дней для проживания. название отеля. кол-во комнат. тип номера standard/large/premium. цена. кол-во человек для проживания. цена
 type HotelRoom struct {
 	Uuid         uuid.UUID `json:"id" bson:"_id"`
 	HotelUuid    uuid.UUID `json:"hotel_uuid" bson:"hotel_uuid"`

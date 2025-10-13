@@ -7,8 +7,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	flog "github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
-	userusecases "github.com/rom6n/otello/internal/app/application/usecases/userusecases"
+	"github.com/rom6n/otello/internal/app/application/usecases/userusecases"
 	"github.com/rom6n/otello/internal/app/domain/user"
+	"github.com/rom6n/otello/internal/utils/httputils"
 )
 
 type UserHandler struct {
@@ -29,7 +30,7 @@ func (v *UserHandler) Register() fiber.Handler {
 		password := c.Query("password")
 
 		if name == "" || email == "" || password == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to register",
 				Error:   "query values 'name', 'email' and 'password' are required",
@@ -37,7 +38,7 @@ func (v *UserHandler) Register() fiber.Handler {
 		}
 
 		if !IsEmailCorrect(email) {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to register",
 				Error:   "invalid email",
@@ -48,7 +49,7 @@ func (v *UserHandler) Register() fiber.Handler {
 
 		jwtCookie, newUser, err := v.UserUsecase.Register(ctx, newUser)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to register",
 				Error:   fmt.Sprintf("%v", err),
@@ -57,7 +58,7 @@ func (v *UserHandler) Register() fiber.Handler {
 
 		c.Cookie(jwtCookie)
 
-		return c.JSON(Response{
+		return c.JSON(httputils.Response{
 			Success: true,
 			Message: "successfully registered",
 			Data:    newUser,
@@ -72,7 +73,7 @@ func (v *UserHandler) Login() fiber.Handler {
 		password := c.Query("password")
 
 		if email == "" || password == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to login",
 				Error:   "email and password are required",
@@ -80,7 +81,7 @@ func (v *UserHandler) Login() fiber.Handler {
 		}
 
 		if !IsEmailCorrect(email) {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to login",
 				Error:   "invalid email",
@@ -89,7 +90,7 @@ func (v *UserHandler) Login() fiber.Handler {
 
 		jwtCookie, foundUser, err := v.UserUsecase.Login(ctx, email, password)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to login",
 				Error:   fmt.Sprintf("%v", err),
@@ -98,7 +99,7 @@ func (v *UserHandler) Login() fiber.Handler {
 
 		c.Cookie(jwtCookie)
 
-		return c.JSON(Response{
+		return c.JSON(httputils.Response{
 			Success: true,
 			Message: "successfully logged in",
 			Data:    foundUser,
@@ -115,7 +116,7 @@ func (v *UserHandler) ChangeName() fiber.Handler {
 		userId, parseErr := uuid.Parse(userIdStr)
 		if parseErr != nil {
 			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseErr)
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to change a name",
 				Error:   fmt.Sprintf("uuid parse error: %v", parseErr),
@@ -123,7 +124,7 @@ func (v *UserHandler) ChangeName() fiber.Handler {
 		}
 
 		if newName == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to change a name",
 				Error:   "dont forget to enter a new name",
@@ -131,14 +132,14 @@ func (v *UserHandler) ChangeName() fiber.Handler {
 		}
 
 		if err := v.UserUsecase.ChangeName(ctx, userId, newName); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to change a name",
 				Error:   fmt.Sprintf("%v", err),
 			})
 		}
 
-		return c.JSON(Response{
+		return c.JSON(httputils.Response{
 			Success: true,
 			Message: fmt.Sprintf("successfully changed name to '%v'", newName),
 		})

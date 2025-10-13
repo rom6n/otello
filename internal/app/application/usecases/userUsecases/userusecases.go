@@ -7,11 +7,11 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	userrepository "github.com/rom6n/otello/internal/app/adapters/repository/userrepository"
+	"github.com/rom6n/otello/internal/app/adapters/repository/userrepository"
 	"github.com/rom6n/otello/internal/app/domain/user"
-	hashutils "github.com/rom6n/otello/internal/utils/hashutils"
-	httputils "github.com/rom6n/otello/internal/utils/httputils"
-	jwtutils "github.com/rom6n/otello/internal/utils/jwtutils"
+	"github.com/rom6n/otello/internal/utils/hashutils"
+	"github.com/rom6n/otello/internal/utils/httputils"
+	"github.com/rom6n/otello/internal/utils/jwtutils"
 )
 
 type UserUsecases interface {
