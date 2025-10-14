@@ -59,7 +59,7 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 	hotelRoomApi.Get("/rent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Create())
 	hotelRoomApi.Get("/unrent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Delete())
 
-	//flightTicketApi.Get("/find", flightTicketHandler.Find())
+	flightTicketApi.Get("/find", flightTicketHandler.Find())
 	flightTicketApi.Get("/buy", flightTicketHandler.Buy())
 
 	// 5da2255a-1ce7-4427-ad44-862165ebf9d7

@@ -119,9 +119,23 @@ func (v *flightTicketRepo) GetFlightTicketWithParams(ctx context.Context, flight
 
 	collection := v.getCollection()
 
-	fmt.Println(dbCtx, collection)
+	findParams := ParseParamsToSearchFilter(flightTicketFilter)
+	if len(findParams) == 0 {
+		findParams = bson.D{}
+	}
 
-	return nil, nil
+	cursor, findErr := collection.Find(dbCtx, findParams)
+	if findErr != nil {
+		return nil, fmt.Errorf("failed to find flight ticket: %v", findErr)
+	}
+
+	var foundedFlightTickets []flightticket.FlightTicket
+
+	if decodeErr := cursor.All(dbCtx, &foundedFlightTickets); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode flight tickets: %v", decodeErr)
+	}
+
+	return foundedFlightTickets, nil
 }
 
 func (v *flightTicketRepo) BuyFlightTicket(ctx context.Context, flightTicketUuid uuid.UUID, amountPassengers uint32) error {
@@ -142,4 +156,38 @@ func (v *flightTicketRepo) BuyFlightTicket(ctx context.Context, flightTicketUuid
 	}
 
 	return nil
+}
+
+func ParseParamsToSearchFilter(filter *flightticket.FlightTicket) bson.D {
+	var findParams bson.D
+
+	if filter.Uuid != uuid.Nil {
+		findParams = append(findParams, bson.E{Key: "_id", Value: filter.Uuid})
+	}
+
+	if filter.Quantity > 0 {
+		rangeQuery := bson.D{}
+		rangeQuery = append(rangeQuery, bson.E{Key: "$gte", Value: filter.Quantity})
+		findParams = append(findParams, bson.E{Key: "quantity", Value: rangeQuery})
+	}
+
+	if filter.CityFrom != "" {
+		findParams = append(findParams, bson.E{Key: "city_from", Value: filter.CityFrom})
+		findParams = append(findParams, bson.E{Key: "city_to", Value: filter.CityTo})
+
+	}
+
+	if filter.TakeOff != nil {
+		rangeQuery1 := bson.D{}
+		rangeQuery2 := bson.D{}
+
+		rangeQuery1 = append(rangeQuery1, bson.E{Key: "$gte", Value: filter.TakeOff})
+
+		rangeQuery2 = append(rangeQuery2, bson.E{Key: "$lte", Value: filter.Arrival})
+
+		findParams = append(findParams, bson.E{Key: "take_off", Value: rangeQuery1})
+		findParams = append(findParams, bson.E{Key: "arrival", Value: rangeQuery2})
+	}
+
+	return findParams
 }

@@ -208,16 +208,25 @@ func (v *FlightTicketHandler) Find() fiber.Handler {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parseErr), nil, fiber.StatusBadRequest)
 		}
 
-		foundFlightTickets, err := v.FlightTicketUsecase.GetWithParams(ctx, &flightTicketFilter, cityVia, arrange != nil, arrange != nil && *arrange == "asc")
+		foundFlightTickets, foundTicketsWithStraightWay, err := v.FlightTicketUsecase.GetWithParams(ctx, &flightTicketFilter, cityVia, arrange != nil, arrange != nil && *arrange == "asc")
 		if err != nil {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
-		if len(foundFlightTickets) == 0 {
+		if len(foundFlightTickets) == 0 && len(foundTicketsWithStraightWay) == 0 {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, "flight tickets not found", nil, fiber.StatusNotFound)
 		}
 
-		return httputils.HandleSuccess(c, "successfully found flight tickets", foundFlightTickets)
+		var valueToReturn interface{}
+		if len(foundTicketsWithStraightWay) > 0 {
+			valueToReturn = foundTicketsWithStraightWay
+		} else {
+			valueToReturn = foundFlightTickets
+		}
+
+		// todo: Добавить категории для тикетов
+
+		return httputils.HandleSuccess(c, "successfully found flight tickets", valueToReturn)
 	}
 }
 
