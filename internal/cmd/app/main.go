@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	_ "github.com/rom6n/otello/docs"
 	"github.com/rom6n/otello/internal/app/config"
 	"github.com/rom6n/otello/internal/pkg/database"
 	"github.com/rom6n/otello/internal/pkg/http"

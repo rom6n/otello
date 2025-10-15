@@ -15,7 +15,7 @@ type FlightTicketHandler struct {
 	FlightTicketUsecase flightticketusecases.FlightTicketUsecases
 }
 
-func parseFlightTicketParams(c *fiber.Ctx, allRequired bool, parseTo *flightticket.FlightTicket) (*string, *string, error) {
+func parseFlightTicketParams(c *fiber.Ctx, parseTo *flightticket.FlightTicket, allRequired bool, isUpdate bool) (*string, *string, error) {
 	uuidStr := c.Query("id")
 	cityFrom := c.Query("city-from")
 	cityTo := c.Query("city-to")
@@ -32,18 +32,21 @@ func parseFlightTicketParams(c *fiber.Ctx, allRequired bool, parseTo *flighttick
 
 	if allRequired {
 		parseTo.Uuid = uuid.New()
+		parseTo.Category = flightticket.None
 	}
 
-	if cityFrom != "" && cityTo == "" {
-		return nil, nil, fmt.Errorf("you must also provide query value 'city-to'")
-	}
+	if !isUpdate {
+		if cityFrom != "" && cityTo == "" {
+			return nil, nil, fmt.Errorf("you must also provide query value 'city-to'")
+		}
 
-	if cityFrom == "" && cityTo != "" {
-		return nil, nil, fmt.Errorf("you must provide query value 'city-from'")
-	}
+		if cityFrom == "" && cityTo != "" {
+			return nil, nil, fmt.Errorf("you must provide query value 'city-from'")
+		}
 
-	if cityViaStr != "" && cityFrom == "" {
-		return nil, nil, fmt.Errorf("you also must provide query values 'city-from' and 'city-to'")
+		if cityViaStr != "" && cityFrom == "" {
+			return nil, nil, fmt.Errorf("you also must provide query values 'city-from' and 'city-to'")
+		}
 	}
 
 	var cityVia *string
@@ -119,13 +122,28 @@ func parseFlightTicketParams(c *fiber.Ctx, allRequired bool, parseTo *flighttick
 	return arrange, cityVia, nil
 }
 
+// @Summary Создать авиабилет (Admin only)
+// @Description Создаёт авиабилет с переданными параметрами
+// @Tags Авиабилет
+// @Accept json
+// @Produce json
+// @Param city-from query string true "Из какого города"
+// @Param city-to query string true "В какой город"
+// @Param quantity query int true "Количество билетов/мест"
+// @Param value query int true "Цена за билет"
+// @Param take-off query string true "Дата и время взлета (формат: 2006-01-02T15:04:05Z)"
+// @Param arrival query string true "Дата и время посадки (формат: 2006-01-02T15:04:06Z)"
+// @Success 200 {object} httputils.SuccessResponse{data=flightticket.FlightTicket}
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/admin/flight-ticket/create [post]
 func (v *FlightTicketHandler) Create() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
 		unsuccessMessage := "failed to create a flight ticket"
 
 		var flightTicket flightticket.FlightTicket
-		_, _, parseErr := parseFlightTicketParams(c, true, &flightTicket)
+		_, _, parseErr := parseFlightTicketParams(c, &flightTicket, true, false)
 		if parseErr != nil {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parseErr), nil, fiber.StatusBadRequest)
 		}
@@ -139,6 +157,22 @@ func (v *FlightTicketHandler) Create() fiber.Handler {
 	}
 }
 
+// @Summary Изменить авиабилет (Admin only)
+// @Description Изменяет авиабилет переданными параметрами
+// @Tags Авиабилет
+// @Accept json
+// @Produce json
+// @Param id query string true "ID авиабилета"
+// @Param city-from query string false "Новый из какого города (необязатено)"
+// @Param city-to query string false "Новый в какой город (необязатено)"
+// @Param quantity query int false "Новое количество билетов/мест (необязатено)"
+// @Param value query int false "Новая цена за билет (необязатено)"
+// @Param take-off query string false "Новые дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)"
+// @Param arrival query string false "Новые дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)"
+// @Success 200 {object} httputils.SuccessResponse
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/admin/flight-ticket/update [put]
 func (v *FlightTicketHandler) Update() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
@@ -148,7 +182,7 @@ func (v *FlightTicketHandler) Update() fiber.Handler {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, "query value 'id' is required", nil, fiber.StatusBadRequest)
 		}
 		var flightTicketFilter flightticket.FlightTicket
-		_, _, parseErr := parseFlightTicketParams(c, false, &flightTicketFilter)
+		_, _, parseErr := parseFlightTicketParams(c, &flightTicketFilter, false, true)
 		if parseErr != nil {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parseErr), nil, fiber.StatusBadRequest)
 		}
@@ -158,7 +192,7 @@ func (v *FlightTicketHandler) Update() fiber.Handler {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", getErr), nil, fiber.StatusInternalServerError)
 		}
 
-		_, _, parse2Err := parseFlightTicketParams(c, false, foundFlightTicket)
+		_, _, parse2Err := parseFlightTicketParams(c, foundFlightTicket, false, true)
 		if parse2Err != nil {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parse2Err), nil, fiber.StatusBadRequest)
 		}
@@ -168,10 +202,20 @@ func (v *FlightTicketHandler) Update() fiber.Handler {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
-		return httputils.HandleSuccess(c, "successfully updated the flight ticket", nil)
+		return httputils.HandleSuccess(c, "successfully updated the flight ticket", foundFlightTicket)
 	}
 }
 
+// @Summary Удалить авиабилет (Admin only)
+// @Description Удаляет авиабилет по ID
+// @Tags Авиабилет
+// @Accept json
+// @Produce json
+// @Param id query string true "ID авиабилета"
+// @Success 200 {object} httputils.SuccessResponse
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/admin/flight-ticket/delete [delete]
 func (v *FlightTicketHandler) Delete() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
@@ -197,13 +241,31 @@ func (v *FlightTicketHandler) Delete() fiber.Handler {
 	}
 }
 
+// @Summary Найти авиабилет
+// @Description Находит авиабилет по фильтрам. Можно искать без фильтров. Можно использовать 'city-from' и 'city-to' вместе с 'city-via' для поиска билетов с пересадкой в этом городе или без него. Если указать 'arrange', то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc - по убыванию). Самый быстрый и самый дешевый авиабилеты/рейсы отмечаются категориями 'самый быстрый', 'самый дешевый', исключение если нет прямого пути без пересадок - в таком случае выдается самый быстрый путь
+// @Tags Авиабилет
+// @Accept json
+// @Produce json
+// @Param id query string false "ID авиабилета (необязатено)"
+// @Param city-from query string false "Из какого города (необязатено)"
+// @Param city-via query string false "Через какой город (необязатено)"
+// @Param city-to query string false "В какой город (необязатено)"
+// @Param quantity query int false "Количество билетов/мест (необязатено)"
+// @Param value query int false "Цена за билет (необязатено)"
+// @Param take-off query string false "Дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)"
+// @Param arrival query string false "Дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)"
+// @Param arrange query string false "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)"
+// @Success 200 {object} httputils.SuccessResponse
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/flight-ticket/find [get]
 func (v *FlightTicketHandler) Find() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
 		unsuccessMessage := "failed to find flight tickets"
 
 		var flightTicketFilter flightticket.FlightTicket
-		arrange, cityVia, parseErr := parseFlightTicketParams(c, false, &flightTicketFilter)
+		arrange, cityVia, parseErr := parseFlightTicketParams(c, &flightTicketFilter, false, false)
 		if parseErr != nil {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", parseErr), nil, fiber.StatusBadRequest)
 		}
@@ -224,12 +286,21 @@ func (v *FlightTicketHandler) Find() fiber.Handler {
 			valueToReturn = foundFlightTickets
 		}
 
-		// todo: Добавить категории для тикетов
-
 		return httputils.HandleSuccess(c, "successfully found flight tickets", valueToReturn)
 	}
 }
 
+// @Summary Купить авиабилет
+// @Description Покупает авиабилеты по ID и количеству пассажиров. Требуется авторизация
+// @Tags Авиабилет
+// @Accept json
+// @Produce json
+// @Param id query string true "ID авиабилета"
+// @Param quantity query int true "Количество пассажиров"
+// @Success 200 {object} httputils.SuccessResponse{data=flightticket.FlightTicket}
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/flight-ticket/buy [post]
 func (v *FlightTicketHandler) Buy() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()

@@ -22,6 +22,18 @@ func IsEmailCorrect(email string) bool {
 	return re.MatchString(email)
 }
 
+// @Summary Зарегистрироваться
+// @Description Регистрирует пользователя по email, имени и паролю
+// @Tags Пользователь
+// @Accept json
+// @Produce json
+// @Param name query string true "Имя пользователя"
+// @Param email query string true "Email пользователя"
+// @Param password query string true "Пароль пользователя"
+// @Success 200 {object} httputils.SuccessResponse{data=user.User}
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/user/register [post]
 func (v *UserHandler) Register() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
@@ -66,6 +78,17 @@ func (v *UserHandler) Register() fiber.Handler {
 	}
 }
 
+// @Summary Войти в аккаунт
+// @Description Вход в аккаунт по email и паролю
+// @Tags Пользователь
+// @Accept json
+// @Produce json
+// @Param email query string true "Email"
+// @Param password query string true "Пароль"
+// @Success 200 {object} httputils.SuccessResponse{data=user.User}
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/user/login [post]
 func (v *UserHandler) Login() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
@@ -107,10 +130,20 @@ func (v *UserHandler) Login() fiber.Handler {
 	}
 }
 
+// @Summary Изменить имя
+// @Description Изменяет имя пользователя. Требуется авторизация
+// @Tags Пользователь
+// @Accept json
+// @Produce json
+// @Param name query string true "Новое имя пользователя"
+// @Success 200 {object} httputils.SuccessResponse
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/user/rename [put]
 func (v *UserHandler) ChangeName() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
-		newName := c.Query("new-name")
+		newName := c.Query("name")
 
 		userIdStr := c.Locals("id").(string)
 		userId, parseErr := uuid.Parse(userIdStr)

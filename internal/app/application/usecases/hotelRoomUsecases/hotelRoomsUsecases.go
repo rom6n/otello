@@ -16,7 +16,7 @@ type HotelRoomUsecases interface {
 	Update(ctx context.Context, newHotelRoomData *hotelroom.HotelRoom) error
 	Delete(ctx context.Context, hotelRoomUuid uuid.UUID) error
 	Get(ctx context.Context, hotelRoomUuid uuid.UUID) (*hotelroom.HotelRoom, error)
-	GetWithParams(ctx context.Context, hotelRoomFirstFilter, hotelRoomSecondFilter *hotelroom.HotelRoom, dateFrom, dateTo, days *uint64, needSort, isAsc bool) ([]hotelroom.HotelRoom, error)
+	GetWithParams(ctx context.Context, hotelRoomFirstFilter, hotelRoomSecondFilter *hotelroom.HotelRoom, dateFrom, dateTo *int64, days *uint64, needSort, isAsc bool) ([]hotelroom.HotelRoom, error)
 }
 
 type hotelRoomUsecase struct {
@@ -85,7 +85,7 @@ func (v *hotelRoomUsecase) Get(ctx context.Context, hotelRoomUuid uuid.UUID) (*h
 	return hotel, nil
 }
 
-func (v *hotelRoomUsecase) GetWithParams(ctx context.Context, hotelRoomFirstFilter, hotelRoomSecondFilter *hotelroom.HotelRoom, dateFrom, dateTo, days *uint64, needSort, isAsc bool) ([]hotelroom.HotelRoom, error) {
+func (v *hotelRoomUsecase) GetWithParams(ctx context.Context, hotelRoomFirstFilter, hotelRoomSecondFilter *hotelroom.HotelRoom, dateFrom, dateTo *int64, days *uint64, needSort, isAsc bool) ([]hotelroom.HotelRoom, error) {
 	usecaseCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
@@ -97,9 +97,9 @@ func (v *hotelRoomUsecase) GetWithParams(ctx context.Context, hotelRoomFirstFilt
 	var availableHotelRooms []hotelroom.HotelRoom
 	if dateFrom != nil {
 		checkIn := *dateFrom
-		var checkOut uint64
+		var checkOut int64
 		if dateTo == nil {
-			timeSeconds := *days * 24 * 60 * 60
+			timeSeconds := int64(*days * 24 * 60 * 60)
 			checkOut = *dateFrom + timeSeconds
 		} else {
 			checkOut = *dateTo

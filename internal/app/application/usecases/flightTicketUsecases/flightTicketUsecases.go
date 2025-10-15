@@ -89,26 +89,6 @@ func (v *flightTicketUsecase) GetWithParams(ctx context.Context, flightTicketFil
 	usecaseCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
-	foundFlightTicketsFor2Cities, getErr := v.flightTicketRepo.GetFlightTicketWithParams(usecaseCtx, flightTicketFilter)
-	if getErr != nil {
-		return nil, nil, getErr
-	}
-
-	if cityVia == nil && len(foundFlightTicketsFor2Cities) != 0 {
-		if needSort {
-			if isAsc {
-				sort.Slice(foundFlightTicketsFor2Cities, func(i, j int) bool {
-					return *foundFlightTicketsFor2Cities[i].Value < *foundFlightTicketsFor2Cities[j].Value
-				})
-			} else {
-				sort.Slice(foundFlightTicketsFor2Cities, func(i, j int) bool {
-					return *foundFlightTicketsFor2Cities[i].Value > *foundFlightTicketsFor2Cities[j].Value
-				})
-			}
-		}
-		return nil, foundFlightTicketsFor2Cities, nil
-	}
-
 	flightTicketFilterCopy := *flightTicketFilter
 	flightTicketFilterCopy.CityFrom = ""
 	flightTicketFilterCopy.CityTo = ""
@@ -116,10 +96,6 @@ func (v *flightTicketUsecase) GetWithParams(ctx context.Context, flightTicketFil
 	allFoundFlightTickets, getAllErr := v.flightTicketRepo.GetFlightTicketWithParams(usecaseCtx, &flightTicketFilterCopy)
 	if getAllErr != nil {
 		return nil, nil, getAllErr
-	}
-
-	if len(allFoundFlightTickets) < 2 {
-		return nil, nil, nil
 	}
 
 	index := make(map[string][]*flightticket.FlightTicket)
@@ -217,10 +193,120 @@ func (v *flightTicketUsecase) GetWithParams(ctx context.Context, flightTicketFil
 		}
 	}
 
-	// ToDo: добавить вывод только прямых, без пересадок, путей если такие есть
-	// todo: добавить сортировку
+	var straightPaths []flightticket.FlightTicket
+	var layoverPathsOr3CityPaths []Path
+	hasLayover := false
 
-	return results, nil, nil
+	if cityVia != nil {
+		for _, result := range results {
+			if len(result.Flights) == 2 {
+				layoverPathsOr3CityPaths = append(layoverPathsOr3CityPaths, result)
+			}
+		}
+
+		if len(layoverPathsOr3CityPaths) == 0 && len(results) != 0 {
+			layoverPathsOr3CityPaths = append(layoverPathsOr3CityPaths, results[0])
+			hasLayover = true
+		}
+	} else {
+		for _, result := range results {
+			if len(result.Flights) == 1 {
+				straightPaths = append(straightPaths, *result.Flights[0])
+			}
+		}
+
+		if len(straightPaths) == 0 && len(results) != 0 {
+			layoverPathsOr3CityPaths = append(layoverPathsOr3CityPaths, results[0])
+			hasLayover = true
+		}
+	}
+
+	if len(straightPaths) > 0 {
+		cheapestId := 0
+		cheapestValue := -1
+
+		fastestId := 0
+		fastestDuration := -1
+		for i, flight := range straightPaths {
+			if (int(*flight.Value) < cheapestValue) || cheapestValue == -1 {
+				cheapestValue = int(*flight.Value)
+				cheapestId = i
+			}
+
+			if (int(flight.Arrival-*flight.TakeOff) < fastestDuration) || fastestDuration == -1 {
+				fastestDuration = int(flight.Arrival - *flight.TakeOff)
+				fastestId = i
+			}
+		}
+
+		straightPaths[cheapestId].Category = flightticket.Cheapest
+		straightPaths[fastestId].Category = flightticket.Fastest
+		if cheapestId == fastestId {
+			straightPaths[cheapestId].Category = flightticket.CheapestFastest
+		}
+
+		memory0 := straightPaths[0]
+		straightPaths[0] = straightPaths[fastestId]
+		if cheapestId != fastestId {
+			memory1 := straightPaths[1]
+			straightPaths[1] = straightPaths[cheapestId]
+			straightPaths[cheapestId] = memory1
+		}
+		straightPaths[fastestId] = memory0
+	} else if len(layoverPathsOr3CityPaths) > 0 && !hasLayover {
+		cheapestId := 0
+		cheapestValue := -1
+
+		fastestId := 0
+		fastestDuration := -1
+
+		for i, path := range layoverPathsOr3CityPaths {
+			if (int(path.Duration()) < fastestDuration) || fastestDuration == -1 {
+				fastestDuration = int(path.Duration())
+				fastestId = i
+			}
+			if (int(path.TotalPrice) < cheapestValue) || cheapestValue == -1 {
+				cheapestValue = int(path.TotalPrice)
+				cheapestId = i
+			}
+		}
+
+		layoverPathsOr3CityPaths[cheapestId].Category = flightticket.Cheapest
+		layoverPathsOr3CityPaths[fastestId].Category = flightticket.Fastest
+		if cheapestId == fastestId {
+			layoverPathsOr3CityPaths[cheapestId].Category = flightticket.CheapestFastest
+		}
+
+		memory0 := layoverPathsOr3CityPaths[0]
+		layoverPathsOr3CityPaths[0] = layoverPathsOr3CityPaths[fastestId]
+		if cheapestId != fastestId {
+			memory1 := layoverPathsOr3CityPaths[1]
+			layoverPathsOr3CityPaths[1] = layoverPathsOr3CityPaths[cheapestId]
+			layoverPathsOr3CityPaths[cheapestId] = memory1
+		}
+		layoverPathsOr3CityPaths[fastestId] = memory0
+
+	}
+
+	if needSort {
+		if isAsc {
+			sort.Slice(straightPaths, func(i, j int) bool {
+				return *straightPaths[i].Value < *straightPaths[j].Value
+			})
+			sort.Slice(layoverPathsOr3CityPaths, func(i, j int) bool {
+				return layoverPathsOr3CityPaths[i].TotalPrice < layoverPathsOr3CityPaths[j].TotalPrice
+			})
+		} else {
+			sort.Slice(straightPaths, func(i, j int) bool {
+				return *straightPaths[i].Value > *straightPaths[j].Value
+			})
+			sort.Slice(layoverPathsOr3CityPaths, func(i, j int) bool {
+				return layoverPathsOr3CityPaths[i].TotalPrice > layoverPathsOr3CityPaths[j].TotalPrice
+			})
+		}
+	}
+
+	return layoverPathsOr3CityPaths, straightPaths, nil
 }
 
 func (v *flightTicketUsecase) Buy(ctx context.Context, flightTicketUuid uuid.UUID, amountPassengers uint32) (*flightticket.FlightTicket, error) {
@@ -272,6 +358,7 @@ type Path struct {
 	FirstTakeOff int64
 	LastArrival  int64
 	TotalPrice   uint64
+	Category     flightticket.FlightTicketCategories
 }
 
 func (p *Path) Duration() int64 {

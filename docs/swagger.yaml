@@ -1,0 +1,979 @@
+definitions:
+  flightticket.FlightTicket:
+    properties:
+      arrival:
+        type: integer
+      category:
+        $ref: '#/definitions/flightticket.FlightTicketCategories'
+      city_from:
+        type: string
+      city_to:
+        type: string
+      id:
+        type: string
+      quantity:
+        type: integer
+      take_off:
+        type: integer
+      value:
+        type: integer
+    type: object
+  flightticket.FlightTicketCategories:
+    enum:
+    - самый быстрый
+    - самый дешевый
+    - самый дешевый, самый быстрый
+    - ""
+    type: string
+    x-enum-varnames:
+    - Fastest
+    - Cheapest
+    - CheapestFastest
+    - None
+  hotel.Hotel:
+    properties:
+      city:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      stars:
+        type: integer
+    type: object
+  hotelroom.HotelRoom:
+    properties:
+      amount_people:
+        description: can have 2 values (from, to)
+        type: integer
+      hotel_uuid:
+        type: string
+      id:
+        type: string
+      rooms:
+        description: can have 2 values (from, to)
+        type: integer
+      type:
+        allOf:
+        - $ref: '#/definitions/hotelroom.HotelType'
+        description: can have 2 values (first, second)
+      value:
+        description: can have 2 values (from, to)
+        type: integer
+    type: object
+  hotelroom.HotelType:
+    enum:
+    - standard
+    - large
+    - premium
+    type: string
+    x-enum-varnames:
+    - Standard
+    - Lagre
+    - Premium
+  httputils.ErrorResponse:
+    properties:
+      error:
+        example: failed to parse query value 'stars-from'
+        type: string
+      message:
+        example: failed to find hotels
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  httputils.SuccessResponse:
+    properties:
+      data: {}
+      message:
+        example: successfully found hotels
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  rent.Rent:
+    properties:
+      date_from:
+        type: integer
+      date_to:
+        type: integer
+      hotel_room_id:
+        type: string
+      id:
+        type: string
+      renter_id:
+        type: string
+    type: object
+  user.User:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      role:
+        $ref: '#/definitions/user.UserRole'
+    type: object
+  user.UserRole:
+    enum:
+    - admin
+    - user
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleUser
+info:
+  contact: {}
+paths:
+  /api/admin/flight-ticket/create:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт авиабилет с переданными параметрами
+      parameters:
+      - description: Из какого города
+        in: query
+        name: city-from
+        required: true
+        type: string
+      - description: В какой город
+        in: query
+        name: city-to
+        required: true
+        type: string
+      - description: Количество билетов/мест
+        in: query
+        name: quantity
+        required: true
+        type: integer
+      - description: Цена за билет
+        in: query
+        name: value
+        required: true
+        type: integer
+      - description: 'Дата и время взлета (формат: 2006-01-02T15:04:05Z)'
+        in: query
+        name: take-off
+        required: true
+        type: string
+      - description: 'Дата и время посадки (формат: 2006-01-02T15:04:06Z)'
+        in: query
+        name: arrival
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/flightticket.FlightTicket'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Создать авиабилет (Admin only)
+      tags:
+      - Авиабилет
+  /api/admin/flight-ticket/delete:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет авиабилет по ID
+      parameters:
+      - description: ID авиабилета
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Удалить авиабилет (Admin only)
+      tags:
+      - Авиабилет
+  /api/admin/flight-ticket/update:
+    put:
+      consumes:
+      - application/json
+      description: Изменяет авиабилет переданными параметрами
+      parameters:
+      - description: ID авиабилета
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Новый из какого города (необязатено)
+        in: query
+        name: city-from
+        type: string
+      - description: Новый в какой город (необязатено)
+        in: query
+        name: city-to
+        type: string
+      - description: Новое количество билетов/мест (необязатено)
+        in: query
+        name: quantity
+        type: integer
+      - description: Новая цена за билет (необязатено)
+        in: query
+        name: value
+        type: integer
+      - description: 'Новые дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)'
+        in: query
+        name: take-off
+        type: string
+      - description: 'Новые дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)'
+        in: query
+        name: arrival
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Изменить авиабилет (Admin only)
+      tags:
+      - Авиабилет
+  /api/admin/hotel-room/create:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт номер отеля с переданными параметрами
+      parameters:
+      - description: ID отеля
+        in: query
+        name: hotel-id
+        required: true
+        type: string
+      - description: Количество комнат
+        in: query
+        name: rooms
+        required: true
+        type: integer
+      - description: Тип номера (standard, large, premium)
+        in: query
+        name: type
+        required: true
+        type: string
+      - description: Количество человек
+        in: query
+        name: amount-people
+        required: true
+        type: integer
+      - description: Цена за номер
+        in: query
+        name: value
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/hotelroom.HotelRoom'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Создать номер отеля (Admin only)
+      tags:
+      - Номер отеля
+  /api/admin/hotel-room/delete:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет номер отеля по ID
+      parameters:
+      - description: ID номера отеля
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Удалить номер отеля (Admin only)
+      tags:
+      - Номер отеля
+  /api/admin/hotel-room/update:
+    put:
+      consumes:
+      - application/json
+      description: Изменяет номер отеля переданными параметрами
+      parameters:
+      - description: ID номера отеля
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Новый ID отеля (необязатено)
+        in: query
+        name: hotel-id
+        type: string
+      - description: Новое количество комнат (необязатено)
+        in: query
+        name: rooms
+        type: integer
+      - description: Новый тип номера (standard, large, premium) (необязатено)
+        in: query
+        name: type
+        type: string
+      - description: Новое количество человек (необязатено)
+        in: query
+        name: amount-people
+        type: integer
+      - description: Новая цена за номер (необязатено)
+        in: query
+        name: value
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/hotelroom.HotelRoom'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Изменить номер отеля (Admin only)
+      tags:
+      - Номер отеля
+  /api/admin/hotel/create:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт отель с переданными параметрами
+      parameters:
+      - description: Город
+        in: query
+        name: city
+        required: true
+        type: string
+      - description: Количество звёзд
+        in: query
+        name: stars
+        required: true
+        type: integer
+      - description: Название отеля (необязатено)
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/hotel.Hotel'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Создать отель (Admin only)
+      tags:
+      - Отель
+  /api/admin/hotel/delete:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет отель по ID
+      parameters:
+      - description: ID отеля
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Удалить отель (Admin only)
+      tags:
+      - Отель
+  /api/admin/hotel/update:
+    put:
+      consumes:
+      - application/json
+      description: Изменяет отель переданными параметрами
+      parameters:
+      - description: ID отеля
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Новый город (необязатено)
+        in: query
+        name: city
+        type: string
+      - description: Новое количество звёзд (необязатено)
+        in: query
+        name: stars
+        type: integer
+      - description: Новое название отеля (необязатено)
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/hotel.Hotel'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Изменить отель (Admin only)
+      tags:
+      - Отель
+  /api/flight-ticket/buy:
+    post:
+      consumes:
+      - application/json
+      description: Покупает авиабилеты по ID и количеству пассажиров. Требуется авторизация
+      parameters:
+      - description: ID авиабилета
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Количество пассажиров
+        in: query
+        name: quantity
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/flightticket.FlightTicket'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Купить авиабилет
+      tags:
+      - Авиабилет
+  /api/flight-ticket/find:
+    get:
+      consumes:
+      - application/json
+      description: Находит авиабилет по фильтрам. Можно искать без фильтров. Можно
+        использовать 'city-from' и 'city-to' вместе с 'city-via' для поиска билетов
+        с пересадкой в этом городе или без него. Если указать 'arrange', то билеты
+        будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc
+        - по убыванию). Самый быстрый и самый дешевый авиабилеты/рейсы отмечаются
+        категориями 'самый быстрый', 'самый дешевый', исключение если нет прямого
+        пути без пересадок - в таком случае выдается самый быстрый путь
+      parameters:
+      - description: ID авиабилета (необязатено)
+        in: query
+        name: id
+        type: string
+      - description: Из какого города (необязатено)
+        in: query
+        name: city-from
+        type: string
+      - description: Через какой город (необязатено)
+        in: query
+        name: city-via
+        type: string
+      - description: В какой город (необязатено)
+        in: query
+        name: city-to
+        type: string
+      - description: Количество билетов/мест (необязатено)
+        in: query
+        name: quantity
+        type: integer
+      - description: Цена за билет (необязатено)
+        in: query
+        name: value
+        type: integer
+      - description: 'Дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)'
+        in: query
+        name: take-off
+        type: string
+      - description: 'Дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)'
+        in: query
+        name: arrival
+        type: string
+      - description: Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)
+        in: query
+        name: arrange
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Найти авиабилет
+      tags:
+      - Авиабилет
+  /api/hotel-room/find:
+    get:
+      consumes:
+      - application/json
+      description: Находит номер отеля по фильтрам. Можно искать без фильтров. Нельзя
+        использовать одновременно 'date-to' и 'days'.  Если указать 'arrange', то
+        билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию,
+        desc - по убыванию)
+      parameters:
+      - description: ID номера отеля (необязатено)
+        in: query
+        name: id
+        type: string
+      - description: ID отеля (необязатено)
+        in: query
+        name: hotel-id
+        type: string
+      - description: Дата заселения/свободен ли (прим. 2016-10-06, год-месяц-день)
+          (необязатено)
+        in: query
+        name: date-from
+        type: string
+      - description: Дата выезда/свободен ли (прим. 2016-10-06, год-месяц-день) (необязатено)
+        in: query
+        name: date-to
+        type: string
+      - description: Количество дней (необязатено)
+        in: query
+        name: days
+        type: integer
+      - description: Минимальное количество комнат (необязатено)
+        in: query
+        name: rooms-from
+        type: integer
+      - description: Максимальное количество комнат (необязатено)
+        in: query
+        name: rooms-to
+        type: integer
+      - description: Первый тип (standard, large, premium) (необязатено)
+        in: query
+        name: type-first
+        type: string
+      - description: Второй тип (standard, large, premium) (необязатено)
+        in: query
+        name: type-second
+        type: string
+      - description: Единый тип (standard, large, premium) (при использовании перекрывает
+          первый тип) (необязатено)
+        in: query
+        name: type
+        type: string
+      - description: Минимальное количество человек (необязатено)
+        in: query
+        name: amount-people-from
+        type: integer
+      - description: Максимальное количество человек (необязатено)
+        in: query
+        name: amount-people-to
+        type: integer
+      - description: Минимальная цена за номер (необязатено)
+        in: query
+        name: value-from
+        type: integer
+      - description: Максимальная цена за номер (необязатено)
+        in: query
+        name: value-to
+        type: integer
+      - description: Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)
+        in: query
+        name: arrange
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/hotelroom.HotelRoom'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Найти номер отеля
+      tags:
+      - Номер отеля
+  /api/hotel-room/rent:
+    post:
+      consumes:
+      - application/json
+      description: Бронирует номер отеля на заданные даты. Дата выезда считается свободной
+        для другого бронирования. 'days' нельзя использовать вместе с 'date-to'. Требуется
+        авторизация
+      parameters:
+      - description: ID номера отеля
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Дата заселения (прим. 2016-10-06, год-месяц-день)
+        in: query
+        name: date-from
+        required: true
+        type: string
+      - description: Дата выезда (прим. 2016-10-06, год-месяц-день) (по выбору)
+        in: query
+        name: date-to
+        type: string
+      - description: Количество дней (по выбору)
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/rent.Rent'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Забронировать номер отеля
+      tags:
+      - Номер отеля
+  /api/hotel-room/unrent:
+    post:
+      consumes:
+      - application/json
+      description: Отменяет бронь номер отеля по ID брони. Админ может удалить бронь
+        у любого пользователя. Требуется авторизация
+      parameters:
+      - description: ID брони
+        in: query
+        name: rent-id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Отменить бронь номера отеля
+      tags:
+      - Номер отеля
+  /api/hotel/find:
+    get:
+      consumes:
+      - application/json
+      description: Находит отель по фильтрам. Можно искать без фильтров. Нельзя использовать
+        одновременно 'stars' и 'stars-from' + 'stars-to'. Если указать 'arrange',
+        то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию,
+        desc - по убыванию)
+      parameters:
+      - description: ID отеля (необязатено)
+        in: query
+        name: id
+        type: string
+      - description: Город (необязатено)
+        in: query
+        name: city
+        type: string
+      - description: Количество звёзд (необязатено)
+        in: query
+        name: stars
+        type: integer
+      - description: Минимальное кол-во звезд (необязатено)
+        in: query
+        name: stars-from
+        type: integer
+      - description: Максимальное кол-во звезд (необязатено)
+        in: query
+        name: stars-to
+        type: integer
+      - description: Упорядочить по звездам ('asc' возрастание, 'desc' убывание) (необязатено)
+        in: query
+        name: arrange
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/hotel.Hotel'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Найти отель по параметрам
+      tags:
+      - Отель
+  /api/user/login:
+    post:
+      consumes:
+      - application/json
+      description: Вход в аккаунт по email и паролю
+      parameters:
+      - description: Email
+        in: query
+        name: email
+        required: true
+        type: string
+      - description: Пароль
+        in: query
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Войти в аккаунт
+      tags:
+      - Пользователь
+  /api/user/register:
+    post:
+      consumes:
+      - application/json
+      description: Регистрирует пользователя по email, имени и паролю
+      parameters:
+      - description: Имя пользователя
+        in: query
+        name: name
+        required: true
+        type: string
+      - description: Email пользователя
+        in: query
+        name: email
+        required: true
+        type: string
+      - description: Пароль пользователя
+        in: query
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/httputils.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Зарегистрироваться
+      tags:
+      - Пользователь
+  /api/user/rename:
+    put:
+      consumes:
+      - application/json
+      description: Изменяет имя пользователя. Требуется авторизация
+      parameters:
+      - description: Новое имя пользователя
+        in: query
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Изменить имя
+      tags:
+      - Пользователь
+swagger: "2.0"

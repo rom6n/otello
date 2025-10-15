@@ -16,11 +16,24 @@ type RentHandler struct {
 	RentUsecase rentusecases.RentUsecases
 }
 
+// @Summary Забронировать номер отеля
+// @Description Бронирует номер отеля на заданные даты. Дата выезда считается свободной для другого бронирования. 'days' нельзя использовать вместе с 'date-to'. Требуется авторизация
+// @Tags Номер отеля
+// @Accept json
+// @Produce json
+// @Param id query string true "ID номера отеля"
+// @Param date-from query string true "Дата заселения (прим. 2016-10-06, год-месяц-день)"
+// @Param date-to query string false "Дата выезда (прим. 2016-10-06, год-месяц-день) (по выбору)"
+// @Param days query int false "Количество дней (по выбору)"
+// @Success 200 {object} httputils.SuccessResponse{data=rent.Rent}
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/hotel-room/rent [post]
 func (v *RentHandler) Create() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
 
-		hotelRoomUuidStr := c.Query("hotel-room-id")
+		hotelRoomUuidStr := c.Query("id")
 		dateFromStr := c.Query("date-from")
 		dateToStr := c.Query("date-to")
 		daysStr := c.Query("days")
@@ -31,7 +44,7 @@ func (v *RentHandler) Create() fiber.Handler {
 			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseUserUuidErr)
 			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
-				Message: "failed to create rent",
+				Message: "failed to rent",
 				Error:   fmt.Sprintf("failed to parse user uuid %s", parseUserUuidErr),
 			})
 		}
@@ -69,40 +82,34 @@ func (v *RentHandler) Create() fiber.Handler {
 			})
 		}
 
-		dateFrom, parseErr := strconv.ParseUint(dateFromStr, 0, 64)
+		dateFromParsed, parseErr := httputils.ParseTimeDate(dateFromStr)
 		if parseErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to rent",
-				Error:   fmt.Sprintf("failed to parse query value 'date-from': %v", parseErr),
+				Error:   fmt.Sprintf("failed to parse query value 'date-from', must match pattern 2016-10-06:  %v", parseErr),
 			})
 		}
-		if dateFrom < 0 {
-			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to rent",
-				Error:   fmt.Sprintf("query value 'date-from' must be equal or greater than zero': %v", parseErr),
-			})
-		}
+		dateFrom := dateFromParsed.Unix()
 
-		var dateTo uint64
+		var dateTo int64
 		if dateToStr != "" {
-			var parseErr error
-			dateTo, parseErr = strconv.ParseUint(dateToStr, 0, 64)
+			dateToParsed, parseErr := httputils.ParseTimeDate(dateToStr)
 			if parseErr != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to rent",
-					Error:   fmt.Sprintf("failed to parse query value 'date-to': %v", parseErr),
+					Error:   fmt.Sprintf("failed to parse query value 'date-to', must match pattern 2016-10-06: %v", parseErr),
 				})
 			}
-			if dateTo < 1 {
+			if dateFrom+24*60*60 > dateToParsed.Unix() {
 				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to rent",
-					Error:   fmt.Sprintf("query value 'date-to' must be greater than zero': %v", parseErr),
+					Error:   fmt.Sprintf("query value 'date-to' must be greater than 'date-from' atleast for 1 day"),
 				})
 			}
+			dateTo = dateToParsed.Unix()
 		}
 
 		if daysStr != "" {
@@ -121,7 +128,7 @@ func (v *RentHandler) Create() fiber.Handler {
 					Error:   fmt.Sprintf("query value 'days' must be greater than zero: %v", parseErr),
 				})
 			}
-			dateTo = dateFrom + uint64(days)*24*60*60
+			dateTo = dateFrom + int64(days)*24*60*60
 		}
 
 		if dateFrom > dateTo {
@@ -144,12 +151,22 @@ func (v *RentHandler) Create() fiber.Handler {
 
 		return c.JSON(httputils.Response{
 			Success: true,
-			Message: "successfully created rent",
+			Message: "successfully rented the hotel room",
 			Data:    hotelRoomRent,
 		})
 	}
 }
 
+// @Summary Отменить бронь номера отеля
+// @Description Отменяет бронь номер отеля по ID брони. Админ может удалить бронь у любого пользователя. Требуется авторизация
+// @Tags Номер отеля
+// @Accept json
+// @Produce json
+// @Param rent-id query string true "ID брони"
+// @Success 200 {object} httputils.SuccessResponse
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/hotel-room/unrent [post]
 func (v *RentHandler) Delete() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
@@ -164,7 +181,7 @@ func (v *RentHandler) Delete() fiber.Handler {
 			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseUserUuidErr)
 			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
-				Message: "failed to delete",
+				Message: "failed to unrent",
 				Error:   fmt.Sprintf("failed to parse user uuid from jwt: %v", parseUserUuidErr),
 			})
 		}
@@ -172,7 +189,7 @@ func (v *RentHandler) Delete() fiber.Handler {
 		if rentUuidStr == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
-				Message: "failed to delete rent",
+				Message: "failed to unrent",
 				Error:   "query value 'rent-id' is required",
 			})
 		}
@@ -181,7 +198,7 @@ func (v *RentHandler) Delete() fiber.Handler {
 		if parseErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
-				Message: "failed to delete rent",
+				Message: "failed to unrent",
 				Error:   fmt.Sprintf("failed to parse query value 'rent-id': %v", parseErr),
 			})
 		}
@@ -189,7 +206,7 @@ func (v *RentHandler) Delete() fiber.Handler {
 		if err := v.RentUsecase.Delete(ctx, rentUuid, userUuid, userRole); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
-				Message: "failed to delete rent",
+				Message: "failed to unrent",
 				Error:   fmt.Sprintf("%v", err),
 			})
 		}

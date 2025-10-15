@@ -7,9 +7,10 @@ import (
 type FlightTicketCategories string
 
 const (
-	Fastest  FlightTicketCategories = "самый быстрый"
-	Cheapest FlightTicketCategories = "самый дешевый"
-	None     FlightTicketCategories = "none"
+	Fastest         FlightTicketCategories = "самый быстрый"
+	Cheapest        FlightTicketCategories = "самый дешевый"
+	CheapestFastest FlightTicketCategories = "самый дешевый, самый быстрый"
+	None            FlightTicketCategories = ""
 )
 
 type FlightTicket struct {

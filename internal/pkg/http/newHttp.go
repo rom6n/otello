@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	flog "github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/swagger"
 	"github.com/rom6n/otello/internal/app/adapters/handler"
 	"github.com/rom6n/otello/internal/app/config"
 	"github.com/rom6n/otello/internal/app/domain/user"
@@ -15,10 +16,12 @@ import (
 
 func NewFiberApp(cfg config.Config) *fiber.App {
 	app := fiber.New()
-
 	app.Use(logger.New())
 
+	app.Get("/docs/*", swagger.HandlerDefault)
+
 	api := app.Group("/api")
+
 	userApi := api.Group("/user")
 	hotelApi := api.Group("/hotel")
 	hotelRoomApi := api.Group("/hotel-room")
@@ -49,31 +52,31 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 		FlightTicketUsecase: cfg.FlightTicketUsecases,
 	}
 
-	userApi.Get("/register", userHandler.Register())                                         // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴🔴🔴
-	userApi.Get("/login", userHandler.Login())                                               // POST сделать потом !!!!!!!!!!!!!  🔴🔴🔴
-	userApi.Get("/rename", CheckJwtMiddleware(cfg.JWTRepo, false), userHandler.ChangeName()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	userApi.Post("/register", userHandler.Register())
+	userApi.Post("/login", userHandler.Login())
+	userApi.Put("/rename", CheckJwtMiddleware(cfg.JWTRepo, false), userHandler.ChangeName())
 
 	hotelApi.Get("/find", hotelHandler.Find())
 
 	hotelRoomApi.Get("/find", hotelRoomHandler.Find())
-	hotelRoomApi.Get("/rent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Create())
-	hotelRoomApi.Get("/unrent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Delete())
+	hotelRoomApi.Post("/rent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Create())
+	hotelRoomApi.Post("/unrent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Delete())
 
 	flightTicketApi.Get("/find", flightTicketHandler.Find())
-	flightTicketApi.Get("/buy", flightTicketHandler.Buy())
+	flightTicketApi.Post("/buy", flightTicketHandler.Buy())
 
 	// 5da2255a-1ce7-4427-ad44-862165ebf9d7
-	adminHotelApi.Get("/create", hotelHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	adminHotelApi.Get("/update", hotelHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	adminHotelApi.Get("/delete", hotelHandler.Delete()) // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminHotelApi.Post("/create", hotelHandler.Create())
+	adminHotelApi.Put("/update", hotelHandler.Update())
+	adminHotelApi.Delete("/delete", hotelHandler.Delete())
 
-	adminHotelRoomApi.Get("/create", hotelRoomHandler.Create()) // POST сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	adminHotelRoomApi.Get("/update", hotelRoomHandler.Update()) // PUT сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
-	adminHotelRoomApi.Get("/delete", hotelRoomHandler.Delete()) // DELETE сделать потом !!!!!!!!!!!!! 🔴🔴🔴🔴🔴
+	adminHotelRoomApi.Post("/create", hotelRoomHandler.Create())
+	adminHotelRoomApi.Put("/update", hotelRoomHandler.Update())
+	adminHotelRoomApi.Delete("/delete", hotelRoomHandler.Delete())
 
-	adminFlightTicketApi.Get("/create", flightTicketHandler.Create())
-	adminFlightTicketApi.Get("/update", flightTicketHandler.Update())
-	adminFlightTicketApi.Get("/delete", flightTicketHandler.Delete())
+	adminFlightTicketApi.Post("/create", flightTicketHandler.Create())
+	adminFlightTicketApi.Put("/update", flightTicketHandler.Update())
+	adminFlightTicketApi.Delete("/delete", flightTicketHandler.Delete())
 
 	return app
 }

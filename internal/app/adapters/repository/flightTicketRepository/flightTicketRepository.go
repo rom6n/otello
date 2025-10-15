@@ -186,7 +186,7 @@ func ParseParamsToSearchFilter(filter *flightticket.FlightTicket) bson.D {
 		rangeQuery2 = append(rangeQuery2, bson.E{Key: "$lte", Value: filter.Arrival})
 
 		findParams = append(findParams, bson.E{Key: "take_off", Value: rangeQuery1})
-		findParams = append(findParams, bson.E{Key: "arrival", Value: rangeQuery2})
+		findParams = append(findParams, bson.E{Key: "take_off", Value: rangeQuery2})
 	}
 
 	return findParams

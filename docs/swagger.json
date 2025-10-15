@@ -1,0 +1,1493 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/api/admin/flight-ticket/create": {
+            "post": {
+                "description": "Создаёт авиабилет с переданными параметрами",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Авиабилет"
+                ],
+                "summary": "Создать авиабилет (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Из какого города",
+                        "name": "city-from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "В какой город",
+                        "name": "city-to",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество билетов/мест",
+                        "name": "quantity",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Цена за билет",
+                        "name": "value",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата и время взлета (формат: 2006-01-02T15:04:05Z)",
+                        "name": "take-off",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата и время посадки (формат: 2006-01-02T15:04:06Z)",
+                        "name": "arrival",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/flightticket.FlightTicket"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/flight-ticket/delete": {
+            "delete": {
+                "description": "Удаляет авиабилет по ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Авиабилет"
+                ],
+                "summary": "Удалить авиабилет (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID авиабилета",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/flight-ticket/update": {
+            "put": {
+                "description": "Изменяет авиабилет переданными параметрами",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Авиабилет"
+                ],
+                "summary": "Изменить авиабилет (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID авиабилета",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Новый из какого города (необязатено)",
+                        "name": "city-from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Новый в какой город (необязатено)",
+                        "name": "city-to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Новое количество билетов/мест (необязатено)",
+                        "name": "quantity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Новая цена за билет (необязатено)",
+                        "name": "value",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Новые дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)",
+                        "name": "take-off",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Новые дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)",
+                        "name": "arrival",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/hotel-room/create": {
+            "post": {
+                "description": "Создаёт номер отеля с переданными параметрами",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Номер отеля"
+                ],
+                "summary": "Создать номер отеля (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID отеля",
+                        "name": "hotel-id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество комнат",
+                        "name": "rooms",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Тип номера (standard, large, premium)",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество человек",
+                        "name": "amount-people",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Цена за номер",
+                        "name": "value",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/hotelroom.HotelRoom"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/hotel-room/delete": {
+            "delete": {
+                "description": "Удаляет номер отеля по ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Номер отеля"
+                ],
+                "summary": "Удалить номер отеля (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID номера отеля",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/hotel-room/update": {
+            "put": {
+                "description": "Изменяет номер отеля переданными параметрами",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Номер отеля"
+                ],
+                "summary": "Изменить номер отеля (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID номера отеля",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Новый ID отеля (необязатено)",
+                        "name": "hotel-id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Новое количество комнат (необязатено)",
+                        "name": "rooms",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Новый тип номера (standard, large, premium) (необязатено)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Новое количество человек (необязатено)",
+                        "name": "amount-people",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Новая цена за номер (необязатено)",
+                        "name": "value",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/hotelroom.HotelRoom"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/hotel/create": {
+            "post": {
+                "description": "Создаёт отель с переданными параметрами",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Отель"
+                ],
+                "summary": "Создать отель (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Город",
+                        "name": "city",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество звёзд",
+                        "name": "stars",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Название отеля (необязатено)",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/hotel.Hotel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/hotel/delete": {
+            "delete": {
+                "description": "Удаляет отель по ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Отель"
+                ],
+                "summary": "Удалить отель (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID отеля",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/hotel/update": {
+            "put": {
+                "description": "Изменяет отель переданными параметрами",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Отель"
+                ],
+                "summary": "Изменить отель (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID отеля",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Новый город (необязатено)",
+                        "name": "city",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Новое количество звёзд (необязатено)",
+                        "name": "stars",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Новое название отеля (необязатено)",
+                        "name": "name",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/hotel.Hotel"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/flight-ticket/buy": {
+            "post": {
+                "description": "Покупает авиабилеты по ID и количеству пассажиров. Требуется авторизация",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Авиабилет"
+                ],
+                "summary": "Купить авиабилет",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID авиабилета",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество пассажиров",
+                        "name": "quantity",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/flightticket.FlightTicket"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/flight-ticket/find": {
+            "get": {
+                "description": "Находит авиабилет по фильтрам. Можно искать без фильтров. Можно использовать 'city-from' и 'city-to' вместе с 'city-via' для поиска билетов с пересадкой в этом городе или без него. Если указать 'arrange', то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc - по убыванию). Самый быстрый и самый дешевый авиабилеты/рейсы отмечаются категориями 'самый быстрый', 'самый дешевый', исключение если нет прямого пути без пересадок - в таком случае выдается самый быстрый путь",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Авиабилет"
+                ],
+                "summary": "Найти авиабилет",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID авиабилета (необязатено)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Из какого города (необязатено)",
+                        "name": "city-from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Через какой город (необязатено)",
+                        "name": "city-via",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "В какой город (необязатено)",
+                        "name": "city-to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество билетов/мест (необязатено)",
+                        "name": "quantity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Цена за билет (необязатено)",
+                        "name": "value",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)",
+                        "name": "take-off",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)",
+                        "name": "arrival",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)",
+                        "name": "arrange",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/hotel-room/find": {
+            "get": {
+                "description": "Находит номер отеля по фильтрам. Можно искать без фильтров. Нельзя использовать одновременно 'date-to' и 'days'.  Если указать 'arrange', то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc - по убыванию)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Номер отеля"
+                ],
+                "summary": "Найти номер отеля",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID номера отеля (необязатено)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID отеля (необязатено)",
+                        "name": "hotel-id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата заселения/свободен ли (прим. 2016-10-06, год-месяц-день) (необязатено)",
+                        "name": "date-from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата выезда/свободен ли (прим. 2016-10-06, год-месяц-день) (необязатено)",
+                        "name": "date-to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество дней (необязатено)",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Минимальное количество комнат (необязатено)",
+                        "name": "rooms-from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Максимальное количество комнат (необязатено)",
+                        "name": "rooms-to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Первый тип (standard, large, premium) (необязатено)",
+                        "name": "type-first",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Второй тип (standard, large, premium) (необязатено)",
+                        "name": "type-second",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Единый тип (standard, large, premium) (при использовании перекрывает первый тип) (необязатено)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Минимальное количество человек (необязатено)",
+                        "name": "amount-people-from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Максимальное количество человек (необязатено)",
+                        "name": "amount-people-to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Минимальная цена за номер (необязатено)",
+                        "name": "value-from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Максимальная цена за номер (необязатено)",
+                        "name": "value-to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)",
+                        "name": "arrange",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/hotelroom.HotelRoom"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/hotel-room/rent": {
+            "post": {
+                "description": "Бронирует номер отеля на заданные даты. Дата выезда считается свободной для другого бронирования. 'days' нельзя использовать вместе с 'date-to'. Требуется авторизация",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Номер отеля"
+                ],
+                "summary": "Забронировать номер отеля",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID номера отеля",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата заселения (прим. 2016-10-06, год-месяц-день)",
+                        "name": "date-from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата выезда (прим. 2016-10-06, год-месяц-день) (по выбору)",
+                        "name": "date-to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество дней (по выбору)",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/rent.Rent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/hotel-room/unrent": {
+            "post": {
+                "description": "Отменяет бронь номер отеля по ID брони. Админ может удалить бронь у любого пользователя. Требуется авторизация",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Номер отеля"
+                ],
+                "summary": "Отменить бронь номера отеля",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID брони",
+                        "name": "rent-id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/hotel/find": {
+            "get": {
+                "description": "Находит отель по фильтрам. Можно искать без фильтров. Нельзя использовать одновременно 'stars' и 'stars-from' + 'stars-to'. Если указать 'arrange', то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc - по убыванию)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Отель"
+                ],
+                "summary": "Найти отель по параметрам",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID отеля (необязатено)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Город (необязатено)",
+                        "name": "city",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество звёзд (необязатено)",
+                        "name": "stars",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Минимальное кол-во звезд (необязатено)",
+                        "name": "stars-from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Максимальное кол-во звезд (необязатено)",
+                        "name": "stars-to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Упорядочить по звездам ('asc' возрастание, 'desc' убывание) (необязатено)",
+                        "name": "arrange",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/hotel.Hotel"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/login": {
+            "post": {
+                "description": "Вход в аккаунт по email и паролю",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Пользователь"
+                ],
+                "summary": "Войти в аккаунт",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email",
+                        "name": "email",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Пароль",
+                        "name": "password",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.User"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/register": {
+            "post": {
+                "description": "Регистрирует пользователя по email, имени и паролю",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Пользователь"
+                ],
+                "summary": "Зарегистрироваться",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Имя пользователя",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Email пользователя",
+                        "name": "email",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Пароль пользователя",
+                        "name": "password",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/httputils.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.User"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/rename": {
+            "put": {
+                "description": "Изменяет имя пользователя. Требуется авторизация",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Пользователь"
+                ],
+                "summary": "Изменить имя",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Новое имя пользователя",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "flightticket.FlightTicket": {
+            "type": "object",
+            "properties": {
+                "arrival": {
+                    "type": "integer"
+                },
+                "category": {
+                    "$ref": "#/definitions/flightticket.FlightTicketCategories"
+                },
+                "city_from": {
+                    "type": "string"
+                },
+                "city_to": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "take_off": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "flightticket.FlightTicketCategories": {
+            "type": "string",
+            "enum": [
+                "самый быстрый",
+                "самый дешевый",
+                "самый дешевый, самый быстрый",
+                ""
+            ],
+            "x-enum-varnames": [
+                "Fastest",
+                "Cheapest",
+                "CheapestFastest",
+                "None"
+            ]
+        },
+        "hotel.Hotel": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "stars": {
+                    "type": "integer"
+                }
+            }
+        },
+        "hotelroom.HotelRoom": {
+            "type": "object",
+            "properties": {
+                "amount_people": {
+                    "description": "can have 2 values (from, to)",
+                    "type": "integer"
+                },
+                "hotel_uuid": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "rooms": {
+                    "description": "can have 2 values (from, to)",
+                    "type": "integer"
+                },
+                "type": {
+                    "description": "can have 2 values (first, second)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/hotelroom.HotelType"
+                        }
+                    ]
+                },
+                "value": {
+                    "description": "can have 2 values (from, to)",
+                    "type": "integer"
+                }
+            }
+        },
+        "hotelroom.HotelType": {
+            "type": "string",
+            "enum": [
+                "standard",
+                "large",
+                "premium"
+            ],
+            "x-enum-varnames": [
+                "Standard",
+                "Lagre",
+                "Premium"
+            ]
+        },
+        "httputils.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "failed to parse query value 'stars-from'"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "failed to find hotels"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "httputils.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string",
+                    "example": "successfully found hotels"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "rent.Rent": {
+            "type": "object",
+            "properties": {
+                "date_from": {
+                    "type": "integer"
+                },
+                "date_to": {
+                    "type": "integer"
+                },
+                "hotel_room_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "renter_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.User": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/user.UserRole"
+                }
+            }
+        },
+        "user.UserRole": {
+            "type": "string",
+            "enum": [
+                "admin",
+                "user"
+            ],
+            "x-enum-varnames": [
+                "RoleAdmin",
+                "RoleUser"
+            ]
+        }
+    }
+}

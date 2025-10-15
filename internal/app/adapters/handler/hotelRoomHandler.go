@@ -83,6 +83,20 @@ func ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valu
 	return nil
 }
 
+// @Summary Создать номер отеля (Admin only)
+// @Description Создаёт номер отеля с переданными параметрами
+// @Tags Номер отеля
+// @Accept json
+// @Produce json
+// @Param hotel-id query string true "ID отеля"
+// @Param rooms query int true "Количество комнат"
+// @Param type query string true "Тип номера (standard, large, premium)"
+// @Param amount-people query int true "Количество человек"
+// @Param value query int true "Цена за номер"
+// @Success 200 {object} httputils.SuccessResponse{data=hotelroom.HotelRoom}
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/admin/hotel-room/create [post]
 func (v *HotelRoomHandler) Create() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
@@ -129,16 +143,31 @@ func (v *HotelRoomHandler) Create() fiber.Handler {
 	}
 }
 
+// @Summary Изменить номер отеля (Admin only)
+// @Description Изменяет номер отеля переданными параметрами
+// @Tags Номер отеля
+// @Accept json
+// @Produce json
+// @Param id query string true "ID номера отеля"
+// @Param hotel-id query string false "Новый ID отеля (необязатено)"
+// @Param rooms query int false "Новое количество комнат (необязатено)"
+// @Param type query string false "Новый тип номера (standard, large, premium) (необязатено)"
+// @Param amount-people query int false "Новое количество человек (необязатено)"
+// @Param value query int false "Новая цена за номер (необязатено)"
+// @Success 200 {object} httputils.SuccessResponse{data=hotelroom.HotelRoom}
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/admin/hotel-room/update [put]
 func (v *HotelRoomHandler) Update() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
 
 		hotelRoomUuidStr := c.Query("id")
-		hotelUuidStr := c.Query("new-hotel-id")
-		roomsStr := c.Query("new-rooms")
-		typeStr := c.Query("new-type")
-		amountPeopleStr := c.Query("new-amount-people")
-		valueStr := c.Query("new-value")
+		hotelUuidStr := c.Query("hotel-id")
+		roomsStr := c.Query("rooms")
+		typeStr := c.Query("type")
+		amountPeopleStr := c.Query("amount-people")
+		valueStr := c.Query("value")
 
 		if hotelRoomUuidStr == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
@@ -186,6 +215,16 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 	}
 }
 
+// @Summary Удалить номер отеля (Admin only)
+// @Description Удаляет номер отеля по ID
+// @Tags Номер отеля
+// @Accept json
+// @Produce json
+// @Param id query string true "ID номера отеля"
+// @Success 200 {object} httputils.SuccessResponse
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/admin/hotel-room/delete [delete]
 func (v *HotelRoomHandler) Delete() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
@@ -224,6 +263,30 @@ func (v *HotelRoomHandler) Delete() fiber.Handler {
 	}
 }
 
+// @Summary Найти номер отеля
+// @Description Находит номер отеля по фильтрам. Можно искать без фильтров. Нельзя использовать одновременно 'date-to' и 'days'.  Если указать 'arrange', то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc - по убыванию)
+// @Tags Номер отеля
+// @Accept json
+// @Produce json
+// @Param id query string false "ID номера отеля (необязатено)"
+// @Param hotel-id query string false "ID отеля (необязатено)"
+// @Param date-from query string false "Дата заселения/свободен ли (прим. 2016-10-06, год-месяц-день) (необязатено)"
+// @Param date-to query string false "Дата выезда/свободен ли (прим. 2016-10-06, год-месяц-день) (необязатено)"
+// @Param days query int false "Количество дней (необязатено)"
+// @Param rooms-from query int false "Минимальное количество комнат (необязатено)"
+// @Param rooms-to query int false "Максимальное количество комнат (необязатено)"
+// @Param type-first query string false "Первый тип (standard, large, premium) (необязатено)"
+// @Param type-second query string false "Второй тип (standard, large, premium) (необязатено)"
+// @Param type query string false "Единый тип (standard, large, premium) (при использовании перекрывает первый тип) (необязатено)"
+// @Param amount-people-from query int false "Минимальное количество человек (необязатено)"
+// @Param amount-people-to query int false "Максимальное количество человек (необязатено)"
+// @Param value-from query int false "Минимальная цена за номер (необязатено)"
+// @Param value-to query int false "Максимальная цена за номер (необязатено)"
+// @Param arrange query string false "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)"
+// @Success 200 {object} httputils.SuccessResponse{data=[]hotelroom.HotelRoom}
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/hotel-room/find [get]
 func (v *HotelRoomHandler) Find() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
@@ -279,46 +342,49 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 			})
 		}
 
-		var dateFrom *uint64
+		var dateFrom *int64
 		if dateFromStr != "" {
-			dateFr, parseErr := strconv.ParseUint(dateFromStr, 0, 64)
+			dateFr, parseErr := httputils.ParseTimeDate(dateFromStr)
 			fmt.Printf("date from: %v\n", dateFr)
-			dateFrom = &dateFr
 			if parseErr != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
-					Error:   fmt.Sprintf("failed to parse query value 'date-from': %v", parseErr),
+					Error:   fmt.Sprintf("failed to parse query value 'date-from', must match pattern 2016-10-06: %v", parseErr),
 				})
 			}
+
+			dateFromUnix := dateFr.Unix()
+			dateFrom = &dateFromUnix
 		}
 
-		var dateTo *uint64
+		var dateTo *int64
 		if dateToStr != "" {
-			dateT, parseErr := strconv.ParseUint(dateToStr, 0, 64)
-			fmt.Printf("date to: %v\n", dateT)
-			dateTo = &dateT
+			dateToParsed, parseErr := httputils.ParseTimeDate(dateToStr)
+			fmt.Printf("date to: %v\n", dateToParsed)
 			if parseErr != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
-					Error:   fmt.Sprintf("failed to parse query value 'date-to': %v", parseErr),
+					Error:   fmt.Sprintf("failed to parse query value 'date-ещ', must match pattern 2016-10-06: %v", parseErr),
 				})
 			}
-			if *dateTo < 1 {
+			dateToUnix := dateToParsed.Unix()
+
+			if *dateFrom+24*60*60 > dateToUnix {
 				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
-					Error:   fmt.Sprintf("query value 'date-to' must be greater than zero"),
+					Error:   fmt.Sprintf("query value 'date-to' must be greater than 'date-from' atleast for 1 day"),
 				})
 			}
+			dateTo = &dateToUnix
 		}
 
 		var days *uint64
 		if daysStr != "" {
-			day, parseErr := strconv.ParseUint(daysStr, 0, 64)
-			fmt.Printf("days: %v\n", day)
-			days = &day
+			daysParsed, parseErr := strconv.ParseUint(daysStr, 0, 64)
+			fmt.Printf("days: %v\n", daysParsed)
 			if parseErr != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
@@ -326,13 +392,14 @@ func (v *HotelRoomHandler) Find() fiber.Handler {
 					Error:   fmt.Sprintf("failed to parse query value 'days': %v", parseErr),
 				})
 			}
-			if *days < 1 {
+			if daysParsed < 1 {
 				return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 					Success: false,
 					Message: "failed to find hotel rooms",
 					Error:   fmt.Sprintf("query value 'days' must be greater than zero"),
 				})
 			}
+			days = &daysParsed
 		}
 
 		var hotelRoomFirstFilter hotelroom.HotelRoom
