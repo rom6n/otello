@@ -89,5 +89,5 @@ go run ./internal/cmd/app/
 ---
 ## Разработчик
 
-* Захаров Роман ([Telegram](t.me/MrRoman))
+* Захаров Роман ([Telegram](https://t.me/MrRoman))
 
