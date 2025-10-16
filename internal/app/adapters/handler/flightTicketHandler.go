@@ -35,6 +35,10 @@ func parseFlightTicketParams(c *fiber.Ctx, parseTo *flightticket.FlightTicket, a
 		parseTo.Category = flightticket.None
 	}
 
+	if (arrivalStr != "" && takeOffStr == "") || (arrivalStr == "" && takeOffStr != "") {
+		return nil, nil, fmt.Errorf("you must choose query value 'take-off' and 'arrival'")
+	}
+
 	if !isUpdate {
 		if cityFrom != "" && cityTo == "" {
 			return nil, nil, fmt.Errorf("you must also provide query value 'city-to'")
@@ -83,6 +87,9 @@ func parseFlightTicketParams(c *fiber.Ctx, parseTo *flightticket.FlightTicket, a
 		if parseQuantityErr != nil {
 			return nil, nil, fmt.Errorf("failed to parse query value 'quantity': %v", parseQuantityErr)
 		}
+		if quantityParsed == 0 {
+			return nil, nil, fmt.Errorf("query value 'quantity' is must be greater than zero")
+		}
 		parseTo.Quantity = uint32(quantityParsed)
 	}
 
@@ -113,8 +120,8 @@ func parseFlightTicketParams(c *fiber.Ctx, parseTo *flightticket.FlightTicket, a
 		}
 		unixArrival := arrivalParsed.Unix()
 
-		if memoryTakeOffUnix > unixArrival {
-			return nil, nil, fmt.Errorf("query value 'take-off' must be greater or equal query value 'arrival'")
+		if memoryTakeOffUnix >= unixArrival {
+			return nil, nil, fmt.Errorf("query value 'take-off' must be greater than query value 'arrival'")
 		}
 		parseTo.Arrival = unixArrival
 	}
@@ -242,16 +249,14 @@ func (v *FlightTicketHandler) Delete() fiber.Handler {
 }
 
 // @Summary Найти авиабилет
-// @Description Находит авиабилет по фильтрам. Можно искать без фильтров. Можно использовать 'city-from' и 'city-to' вместе с 'city-via' для поиска билетов с пересадкой в этом городе или без него. Если указать 'arrange', то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc - по убыванию). Самый быстрый и самый дешевый авиабилеты/рейсы отмечаются категориями 'самый быстрый', 'самый дешевый', исключение если нет прямого пути без пересадок - в таком случае выдается самый быстрый путь
+// @Description Находит авиабилет по фильтрам. Можно использовать 'city-from' и 'city-to' вместе с 'city-via' для поиска билетов с пересадкой в этом городе или без него. Если указать 'arrange', то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc - по убыванию). Самый быстрый и самый дешевый авиабилеты/рейсы отмечаются категориями 'самый быстрый', 'самый дешевый', исключение если нет прямого пути без пересадок - в таком случае выдается самый быстрый путь
 // @Tags Авиабилет
 // @Accept json
 // @Produce json
-// @Param id query string false "ID авиабилета (необязатено)"
-// @Param city-from query string false "Из какого города (необязатено)"
-// @Param city-via query string false "Через какой город (необязатено)"
-// @Param city-to query string false "В какой город (необязатено)"
+// @Param city-from query string true "Из какого города"
+// @Param city-via query string false "Через какой город (по выбору)"
+// @Param city-to query string false "В какой город (по выбору)"
 // @Param quantity query int false "Количество билетов/мест (необязатено)"
-// @Param value query int false "Цена за билет (необязатено)"
 // @Param take-off query string false "Дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)"
 // @Param arrival query string false "Дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)"
 // @Param arrange query string false "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)"

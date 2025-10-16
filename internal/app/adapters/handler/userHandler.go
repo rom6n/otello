@@ -59,7 +59,7 @@ func (v *UserHandler) Register() fiber.Handler {
 
 		newUser := user.NewUser(name, email, password)
 
-		jwtCookie, newUser, err := v.UserUsecase.Register(ctx, newUser)
+		jwtRefreshCookie, jwtAccessCookie, newUser, err := v.UserUsecase.Register(ctx, newUser)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
@@ -68,7 +68,8 @@ func (v *UserHandler) Register() fiber.Handler {
 			})
 		}
 
-		c.Cookie(jwtCookie)
+		c.Cookie(jwtRefreshCookie)
+		c.Cookie(jwtAccessCookie)
 
 		return c.JSON(httputils.Response{
 			Success: true,
@@ -111,7 +112,7 @@ func (v *UserHandler) Login() fiber.Handler {
 			})
 		}
 
-		jwtCookie, foundUser, err := v.UserUsecase.Login(ctx, email, password)
+		jwtRefreshCookie, jwtAccessCookie, foundUser, err := v.UserUsecase.Login(ctx, email, password)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
 				Success: false,
@@ -120,7 +121,8 @@ func (v *UserHandler) Login() fiber.Handler {
 			})
 		}
 
-		c.Cookie(jwtCookie)
+		c.Cookie(jwtRefreshCookie)
+		c.Cookie(jwtAccessCookie)
 
 		return c.JSON(httputils.Response{
 			Success: true,
@@ -175,6 +177,102 @@ func (v *UserHandler) ChangeName() fiber.Handler {
 		return c.JSON(httputils.Response{
 			Success: true,
 			Message: fmt.Sprintf("successfully changed name to '%v'", newName),
+		})
+	}
+}
+
+// @Summary Выдать роль админа
+// @Description Выдает роль админа по паролю. Требуется авторизация
+// @Tags Пользователь
+// @Accept json
+// @Produce json
+// @Param password query string true "Пароль админки"
+// @Success 200 {object} httputils.SuccessResponse
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/user/get-admin [post]
+func (v *UserHandler) GetAdminRole() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ctx := c.Context()
+		password := c.Query("password")
+
+		if password == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
+				Success: false,
+				Message: "failed to change a role",
+				Error:   "query value 'password' is required",
+			})
+		}
+
+		userUuidStr := c.Locals("id").(string)
+		userId, parseErr := uuid.Parse(userUuidStr)
+		if parseErr != nil {
+			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseErr)
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
+				Success: false,
+				Message: "failed to change a role",
+				Error:   fmt.Sprintf("uuid parse error: %v", parseErr),
+			})
+		}
+
+		newJwtRefreshCookie, newJwtAccessCookie, err := v.UserUsecase.ChangeRole(ctx, userId, user.RoleAdmin, password)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
+				Success: false,
+				Message: "failed to change a role",
+				Error:   fmt.Sprintf("%v", err),
+			})
+		}
+
+		c.Cookie(newJwtRefreshCookie)
+		c.Cookie(newJwtAccessCookie)
+
+		return c.JSON(httputils.Response{
+			Success: true,
+			Message: "successfully changed role to 'admin'",
+		})
+	}
+}
+
+// @Summary Выдать роль пользователя
+// @Description Выдает роль пользователя. Требуется авторизация
+// @Tags Пользователь
+// @Accept json
+// @Produce json
+// @Success 200 {object} httputils.SuccessResponse
+// @Failure 400 {object} httputils.ErrorResponse
+// @Failure 500 {object} httputils.ErrorResponse
+// @Router /api/user/get-user [post]
+func (v *UserHandler) GetUserRole() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ctx := c.Context()
+
+		userUuidStr := c.Locals("id").(string)
+		userId, parseErr := uuid.Parse(userUuidStr)
+		if parseErr != nil {
+			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseErr)
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
+				Success: false,
+				Message: "failed to change a role",
+				Error:   fmt.Sprintf("uuid parse error: %v", parseErr),
+			})
+		}
+
+		newJwtRefreshCookie, newJwtAccessCookie, err := v.UserUsecase.ChangeRole(ctx, userId, user.RoleUser, "")
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
+				Success: false,
+				Message: "failed to change a role",
+				Error:   fmt.Sprintf("%v", err),
+			})
+		}
+
+		c.Cookie(newJwtRefreshCookie)
+		c.Cookie(newJwtAccessCookie)
+
+		return c.JSON(httputils.Response{
+			Success: true,
+			Message: "successfully changed role to 'user'",
 		})
 	}
 }

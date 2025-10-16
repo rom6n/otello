@@ -569,37 +569,30 @@ paths:
     get:
       consumes:
       - application/json
-      description: Находит авиабилет по фильтрам. Можно искать без фильтров. Можно
-        использовать 'city-from' и 'city-to' вместе с 'city-via' для поиска билетов
-        с пересадкой в этом городе или без него. Если указать 'arrange', то билеты
-        будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc
-        - по убыванию). Самый быстрый и самый дешевый авиабилеты/рейсы отмечаются
-        категориями 'самый быстрый', 'самый дешевый', исключение если нет прямого
-        пути без пересадок - в таком случае выдается самый быстрый путь
+      description: Находит авиабилет по фильтрам. Можно использовать 'city-from' и
+        'city-to' вместе с 'city-via' для поиска билетов с пересадкой в этом городе
+        или без него. Если указать 'arrange', то билеты будут отсортированы по цене
+        в указанном порядке (asc - по возрастанию, desc - по убыванию). Самый быстрый
+        и самый дешевый авиабилеты/рейсы отмечаются категориями 'самый быстрый', 'самый
+        дешевый', исключение если нет прямого пути без пересадок - в таком случае
+        выдается самый быстрый путь
       parameters:
-      - description: ID авиабилета (необязатено)
-        in: query
-        name: id
-        type: string
-      - description: Из какого города (необязатено)
+      - description: Из какого города
         in: query
         name: city-from
+        required: true
         type: string
-      - description: Через какой город (необязатено)
+      - description: Через какой город (по выбору)
         in: query
         name: city-via
         type: string
-      - description: В какой город (необязатено)
+      - description: В какой город (по выбору)
         in: query
         name: city-to
         type: string
       - description: Количество билетов/мест (необязатено)
         in: query
         name: quantity
-        type: integer
-      - description: Цена за билет (необязатено)
-        in: query
-        name: value
         type: integer
       - description: 'Дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)'
         in: query
@@ -864,6 +857,58 @@ paths:
       summary: Найти отель по параметрам
       tags:
       - Отель
+  /api/user/get-admin:
+    post:
+      consumes:
+      - application/json
+      description: Выдает роль админа по паролю. Требуется авторизация
+      parameters:
+      - description: Пароль админки
+        in: query
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Выдать роль админа
+      tags:
+      - Пользователь
+  /api/user/get-user:
+    post:
+      consumes:
+      - application/json
+      description: Выдает роль пользователя. Требуется авторизация
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputils.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputils.ErrorResponse'
+      summary: Выдать роль пользователя
+      tags:
+      - Пользователь
   /api/user/login:
     post:
       consumes:

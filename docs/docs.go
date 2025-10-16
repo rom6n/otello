@@ -696,7 +696,7 @@ const docTemplate = `{
         },
         "/api/flight-ticket/find": {
             "get": {
-                "description": "Находит авиабилет по фильтрам. Можно искать без фильтров. Можно использовать 'city-from' и 'city-to' вместе с 'city-via' для поиска билетов с пересадкой в этом городе или без него. Если указать 'arrange', то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc - по убыванию). Самый быстрый и самый дешевый авиабилеты/рейсы отмечаются категориями 'самый быстрый', 'самый дешевый', исключение если нет прямого пути без пересадок - в таком случае выдается самый быстрый путь",
+                "description": "Находит авиабилет по фильтрам. Можно использовать 'city-from' и 'city-to' вместе с 'city-via' для поиска билетов с пересадкой в этом городе или без него. Если указать 'arrange', то билеты будут отсортированы по цене в указанном порядке (asc - по возрастанию, desc - по убыванию). Самый быстрый и самый дешевый авиабилеты/рейсы отмечаются категориями 'самый быстрый', 'самый дешевый', исключение если нет прямого пути без пересадок - в таком случае выдается самый быстрый путь",
                 "consumes": [
                     "application/json"
                 ],
@@ -710,25 +710,20 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID авиабилета (необязатено)",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Из какого города (необязатено)",
+                        "description": "Из какого города",
                         "name": "city-from",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Через какой город (необязатено)",
+                        "description": "Через какой город (по выбору)",
                         "name": "city-via",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "В какой город (необязатено)",
+                        "description": "В какой город (по выбору)",
                         "name": "city-to",
                         "in": "query"
                     },
@@ -736,12 +731,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Количество билетов/мест (необязатено)",
                         "name": "quantity",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Цена за билет (необязатено)",
-                        "name": "value",
                         "in": "query"
                     },
                     {
@@ -1117,6 +1106,85 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/get-admin": {
+            "post": {
+                "description": "Выдает роль админа по паролю. Требуется авторизация",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Пользователь"
+                ],
+                "summary": "Выдать роль админа",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Пароль админки",
+                        "name": "password",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/get-user": {
+            "post": {
+                "description": "Выдает роль пользователя. Требуется авторизация",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Пользователь"
+                ],
+                "summary": "Выдать роль пользователя",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httputils.SuccessResponse"
                         }
                     },
                     "400": {

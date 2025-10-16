@@ -14,10 +14,13 @@ import (
 	"github.com/rom6n/otello/internal/utils/jwtutils"
 )
 
+const AdminPasswordConst = "5SMpOxD4IFrXfCqy.T0jQA4ufiTHnLbLsUJySnL6mgB6u65ZmMjxiTsuXQcI"
+
 type UserUsecases interface {
-	Register(ctx context.Context, user *user.User) (*fiber.Cookie, *user.User, error)
-	Login(ctx context.Context, email, password string) (*fiber.Cookie, *user.User, error)
+	Register(ctx context.Context, user *user.User) (*fiber.Cookie, *fiber.Cookie, *user.User, error)
+	Login(ctx context.Context, email, password string) (*fiber.Cookie, *fiber.Cookie, *user.User, error)
 	ChangeName(ctx context.Context, userId uuid.UUID, newName string) error
+	ChangeRole(ctx context.Context, userId uuid.UUID, newRole user.UserRole, password string) (*fiber.Cookie, *fiber.Cookie, error)
 }
 
 type userUsecase struct {
@@ -38,49 +41,59 @@ func (v *userUsecase) getContext(ctx context.Context) (context.Context, context.
 	return context.WithTimeout(ctx, v.timeout)
 }
 
-func (v *userUsecase) Register(ctx context.Context, user *user.User) (*fiber.Cookie, *user.User, error) {
+func (v *userUsecase) Register(ctx context.Context, user *user.User) (*fiber.Cookie, *fiber.Cookie, *user.User, error) {
 	usecaseCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
 	salt, saltErr := hashutils.GenerateSalt()
 	if saltErr != nil {
-		return nil, nil, fmt.Errorf("failed to generate salt: %v", saltErr)
+		return nil, nil, nil, fmt.Errorf("failed to generate salt: %v", saltErr)
 	}
 
 	hashedPassword := hashutils.HashPassword(user.Password, salt)
 	user.Password = hashedPassword
 
 	if createErr := v.userRepo.CreateUser(usecaseCtx, user); createErr != nil {
-		return nil, nil, createErr
+		return nil, nil, nil, createErr
 	}
 
-	jwtToken, jwtErr := v.jwtUtilsRepo.NewJwt(user.Uuid, user.Role)
+	jwtRefreshToken, jwtErr := v.jwtUtilsRepo.NewJwt(user.Uuid, user.Role, httputils.JwtRefreshToken)
 	if jwtErr != nil {
-		return nil, nil, fmt.Errorf("failed to create jwt token: %v", jwtErr)
+		return nil, nil, nil, fmt.Errorf("failed to create refresh jwt token: %v", jwtErr)
 	}
 
-	return httputils.BuildCookie(jwtToken, 1), user, nil
+	jwtAccessToken, jwtErr := v.jwtUtilsRepo.NewJwt(user.Uuid, user.Role, httputils.JwtAccessToken)
+	if jwtErr != nil {
+		return nil, nil, nil, fmt.Errorf("failed to create access jwt token: %v", jwtErr)
+	}
+
+	return httputils.BuildCookie(jwtRefreshToken, httputils.JwtRefreshToken), httputils.BuildCookie(jwtAccessToken, httputils.JwtAccessToken), user, nil
 }
 
-func (v *userUsecase) Login(ctx context.Context, email, password string) (*fiber.Cookie, *user.User, error) {
+func (v *userUsecase) Login(ctx context.Context, email, password string) (*fiber.Cookie, *fiber.Cookie, *user.User, error) {
 	usecaseCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
 	foundUser, userErr := v.userRepo.GetUser(usecaseCtx, email)
 	if userErr != nil {
-		return nil, nil, userErr
+		return nil, nil, nil, userErr
 	}
 
 	if verifyErr := hashutils.VerifyPassword(password, foundUser.Password); verifyErr != nil {
-		return nil, nil, fmt.Errorf("failed to verify password: %v", verifyErr)
+		return nil, nil, nil, fmt.Errorf("failed to verify password: %v", verifyErr)
 	}
 
-	jwtToken, jwtErr := v.jwtUtilsRepo.NewJwt(foundUser.Uuid, foundUser.Role)
+	jwtRefreshToken, jwtErr := v.jwtUtilsRepo.NewJwt(foundUser.Uuid, foundUser.Role, httputils.JwtRefreshToken)
 	if jwtErr != nil {
-		return nil, nil, fmt.Errorf("failed to create jwt token: %v", jwtErr)
+		return nil, nil, nil, fmt.Errorf("failed to create refresh jwt token: %v", jwtErr)
 	}
 
-	return httputils.BuildCookie(jwtToken, 1), foundUser, nil
+	jwtAccessToken, jwtErr := v.jwtUtilsRepo.NewJwt(foundUser.Uuid, foundUser.Role, httputils.JwtAccessToken)
+	if jwtErr != nil {
+		return nil, nil, nil, fmt.Errorf("failed to create access jwt token: %v", jwtErr)
+	}
+
+	return httputils.BuildCookie(jwtRefreshToken, httputils.JwtRefreshToken), httputils.BuildCookie(jwtAccessToken, httputils.JwtAccessToken), foundUser, nil
 }
 
 func (v *userUsecase) ChangeName(ctx context.Context, userId uuid.UUID, newName string) error {
@@ -92,4 +105,26 @@ func (v *userUsecase) ChangeName(ctx context.Context, userId uuid.UUID, newName 
 	}
 
 	return nil
+}
+
+func (v *userUsecase) ChangeRole(ctx context.Context, userId uuid.UUID, newRole user.UserRole, password string) (*fiber.Cookie, *fiber.Cookie, error) {
+	usecaseCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	if newRole == user.RoleAdmin {
+		if err := hashutils.VerifyPassword(password, AdminPasswordConst); err != nil {
+			return nil, nil, fmt.Errorf("failed to verify password, wrong password: %v", err)
+		}
+	}
+
+	if err := v.userRepo.UpdateUserRole(usecaseCtx, userId, string(newRole)); err != nil {
+		return nil, nil, err
+	}
+
+	jwtRefreshToken, jwtErr := v.jwtUtilsRepo.NewJwt(userId, newRole, httputils.JwtRefreshToken)
+	if jwtErr != nil {
+		return nil, nil, fmt.Errorf("failed to create refresh jwt token: %v", jwtErr)
+	}
+
+	return httputils.BuildCookie(jwtRefreshToken, httputils.JwtRefreshToken), httputils.BuildCookie(jwtRefreshToken, httputils.JwtAccessToken), nil
 }

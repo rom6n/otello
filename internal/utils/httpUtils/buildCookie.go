@@ -9,23 +9,29 @@ import (
 type CookieUsage int
 
 const (
-	jwtToken CookieUsage = 1
+	JwtAccessToken  CookieUsage = 1
+	JwtRefreshToken CookieUsage = 2
 )
+
+const SecureNeed = false
 
 func BuildCookie(value string, usage CookieUsage) *fiber.Cookie {
 	var name string
 	var maxAge int
 	var expires time.Time
-	var secure bool
 	var httpOnly bool
 
 	switch usage {
-	case jwtToken:
+	case JwtAccessToken:
 		maxAge = 600
 		expires = time.Now().Add(10 * time.Minute)
-		secure = false
-		httpOnly = false
+		httpOnly = true
 		name = "jwtToken"
+	case JwtRefreshToken:
+		maxAge = 7 * 24 * 3600
+		expires = time.Now().Add(7 * 24 * 3600 * time.Second)
+		httpOnly = true
+		name = "jwtRefreshToken"
 	}
 
 	return &fiber.Cookie{
@@ -33,7 +39,8 @@ func BuildCookie(value string, usage CookieUsage) *fiber.Cookie {
 		Value:    value,
 		MaxAge:   maxAge,
 		Expires:  expires,
-		Secure:   secure,
+		Secure:   SecureNeed,
+		SameSite: fiber.CookieSameSiteStrictMode,
 		HTTPOnly: httpOnly,
 	}
 }

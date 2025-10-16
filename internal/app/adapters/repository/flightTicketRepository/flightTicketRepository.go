@@ -165,11 +165,13 @@ func ParseParamsToSearchFilter(filter *flightticket.FlightTicket) bson.D {
 		findParams = append(findParams, bson.E{Key: "_id", Value: filter.Uuid})
 	}
 
+	var amountQuantity uint32 = 1
 	if filter.Quantity > 0 {
-		rangeQuery := bson.D{}
-		rangeQuery = append(rangeQuery, bson.E{Key: "$gte", Value: filter.Quantity})
-		findParams = append(findParams, bson.E{Key: "quantity", Value: rangeQuery})
+		amountQuantity = filter.Quantity
 	}
+	rangeQuery := bson.D{}
+	rangeQuery = append(rangeQuery, bson.E{Key: "$gte", Value: amountQuantity})
+	findParams = append(findParams, bson.E{Key: "quantity", Value: rangeQuery})
 
 	if filter.CityFrom != "" {
 		findParams = append(findParams, bson.E{Key: "city_from", Value: filter.CityFrom})

@@ -6,14 +6,14 @@ import (
 	"os"
 	"time"
 
-	log2 "github.com/gofiber/fiber/v2/log"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/rom6n/otello/internal/app/domain/user"
+	httputils "github.com/rom6n/otello/internal/utils/httputils"
 )
 
 type JwtRepository interface {
-	NewJwt(uuid uuid.UUID, role user.UserRole) (string, error)
+	NewJwt(uuid uuid.UUID, role user.UserRole, usage httputils.CookieUsage) (string, error)
 	VerifyJwt(tokenStr string) (jwt.MapClaims, error)
 }
 
@@ -32,10 +32,18 @@ func New() JwtRepository {
 	}
 }
 
-func (v *JwtRepo) NewJwt(uuid uuid.UUID, role user.UserRole) (string, error) {
+func (v *JwtRepo) NewJwt(uuid uuid.UUID, role user.UserRole, usage httputils.CookieUsage) (string, error) {
+	var exp int64
+	switch usage {
+	case httputils.JwtAccessToken:
+		exp = time.Now().Add(10 * time.Minute).Unix()
+	case httputils.JwtRefreshToken:
+		exp = time.Now().Add(7 * 24 * 3600 * time.Second).Unix()
+	}
+
 	claims := jwt.MapClaims{
 		"user_id": uuid.String(),
-		"exp":     time.Now().Add(time.Minute * 10).Unix(),
+		"exp":     exp,
 		"iat":     time.Now().Unix(),
 		"iss":     "otello",
 		"aud":     "otello-users",
@@ -55,7 +63,6 @@ func (v *JwtRepo) VerifyJwt(tokenStr string) (jwt.MapClaims, error) {
 	})
 
 	if err != nil {
-		log2.Warnf("failed to parse jwt token: %v", err)
 		return nil, fmt.Errorf("not authorized")
 	}
 

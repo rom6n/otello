@@ -15,6 +15,7 @@ type UserRepository interface {
 	CreateUser(ctx context.Context, user *user.User) error
 	GetUser(ctx context.Context, email string) (*user.User, error)
 	UpdateUserName(ctx context.Context, userId uuid.UUID, newName string) error
+	UpdateUserRole(ctx context.Context, userId uuid.UUID, newRole string) error
 }
 
 type userRepo struct {
@@ -83,6 +84,25 @@ func (v *userRepo) UpdateUserName(ctx context.Context, userId uuid.UUID, newName
 
 	if _, err := collection.UpdateByID(dbCtx, userId, update); err != nil {
 		return fmt.Errorf("failed to update name: %v", err)
+	}
+
+	return nil
+}
+
+func (v *userRepo) UpdateUserRole(ctx context.Context, userId uuid.UUID, newRole string) error {
+	dbCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	collection := v.getCollection()
+
+	update := bson.M{
+		"$set": bson.M{
+			"role": newRole,
+		},
+	}
+
+	if _, err := collection.UpdateByID(dbCtx, userId, update); err != nil {
+		return fmt.Errorf("failed to update role: %v", err)
 	}
 
 	return nil
