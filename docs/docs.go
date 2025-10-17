@@ -173,37 +173,37 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Новый из какого города (необязатено)",
+                        "description": "Новый из какого города (необязательно)",
                         "name": "city-from",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Новый в какой город (необязатено)",
+                        "description": "Новый в какой город (необязательно)",
                         "name": "city-to",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Новое количество билетов/мест (необязатено)",
+                        "description": "Новое количество билетов/мест (необязательно)",
                         "name": "quantity",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Новая цена за билет (необязатено)",
+                        "description": "Новая цена за билет (необязательно)",
                         "name": "value",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Новые дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)",
+                        "description": "Новые дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязательно)",
                         "name": "take-off",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Новые дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)",
+                        "description": "Новые дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязательно)",
                         "name": "arrival",
                         "in": "query"
                     }
@@ -381,31 +381,31 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Новый ID отеля (необязатено)",
+                        "description": "Новый ID отеля (необязательно)",
                         "name": "hotel-id",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Новое количество комнат (необязатено)",
+                        "description": "Новое количество комнат (необязательно)",
                         "name": "rooms",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Новый тип номера (standard, large, premium) (необязатено)",
+                        "description": "Новый тип номера (standard, large, premium) (необязательно)",
                         "name": "type",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Новое количество человек (необязатено)",
+                        "description": "Новое количество человек (необязательно)",
                         "name": "amount-people",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Новая цена за номер (необязатено)",
+                        "description": "Новая цена за номер (необязательно)",
                         "name": "value",
                         "in": "query"
                     }
@@ -474,7 +474,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Название отеля (необязатено)",
+                        "description": "Название отеля (необязательно)",
                         "name": "name",
                         "in": "query"
                     }
@@ -580,19 +580,19 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Новый город (необязатено)",
+                        "description": "Новый город (необязательно)",
                         "name": "city",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Новое количество звёзд (необязатено)",
+                        "description": "Новое количество звёзд (необязательно)",
                         "name": "stars",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Новое название отеля (необязатено)",
+                        "description": "Новое название отеля (необязательно)",
                         "name": "name",
                         "in": "query"
                     }
@@ -729,25 +729,25 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Количество билетов/мест (необязатено)",
+                        "description": "Количество билетов/мест (необязательно)",
                         "name": "quantity",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)",
+                        "description": "Дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязательно)",
                         "name": "take-off",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)",
+                        "description": "Дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязательно)",
                         "name": "arrival",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)",
+                        "description": "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязательно)",
                         "name": "arrange",
                         "in": "query"
                     }
@@ -790,91 +790,91 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID номера отеля (необязатено)",
+                        "description": "ID номера отеля (необязательно)",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "ID отеля (необязатено)",
+                        "description": "ID отеля (необязательно)",
                         "name": "hotel-id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Дата заселения/свободен ли (прим. 2016-10-06, год-месяц-день) (необязатено)",
+                        "description": "Дата заселения/свободен ли (прим. 2016-10-06, год-месяц-день) (необязательно)",
                         "name": "date-from",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Дата выезда/свободен ли (прим. 2016-10-06, год-месяц-день) (необязатено)",
+                        "description": "Дата выезда/свободен ли (прим. 2016-10-06, год-месяц-день) (необязательно)",
                         "name": "date-to",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Количество дней (необязатено)",
+                        "description": "Количество дней (необязательно)",
                         "name": "days",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Минимальное количество комнат (необязатено)",
+                        "description": "Минимальное количество комнат (необязательно)",
                         "name": "rooms-from",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Максимальное количество комнат (необязатено)",
+                        "description": "Максимальное количество комнат (необязательно)",
                         "name": "rooms-to",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Первый тип (standard, large, premium) (необязатено)",
+                        "description": "Первый тип (standard, large, premium) (необязательно)",
                         "name": "type-first",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Второй тип (standard, large, premium) (необязатено)",
+                        "description": "Второй тип (standard, large, premium) (необязательно)",
                         "name": "type-second",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Единый тип (standard, large, premium) (при использовании перекрывает первый тип) (необязатено)",
+                        "description": "Единый тип (standard, large, premium) (при использовании перекрывает первый тип) (необязательно)",
                         "name": "type",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Минимальное количество человек (необязатено)",
+                        "description": "Минимальное количество человек (необязательно)",
                         "name": "amount-people-from",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Максимальное количество человек (необязатено)",
+                        "description": "Максимальное количество человек (необязательно)",
                         "name": "amount-people-to",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Минимальная цена за номер (необязатено)",
+                        "description": "Минимальная цена за номер (необязательно)",
                         "name": "value-from",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Максимальная цена за номер (необязатено)",
+                        "description": "Максимальная цена за номер (необязательно)",
                         "name": "value-to",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)",
+                        "description": "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязательно)",
                         "name": "arrange",
                         "in": "query"
                     }
@@ -1051,37 +1051,37 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID отеля (необязатено)",
+                        "description": "ID отеля (необязательно)",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Город (необязатено)",
+                        "description": "Город (необязательно)",
                         "name": "city",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Количество звёзд (необязатено)",
+                        "description": "Количество звёзд (необязательно)",
                         "name": "stars",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Минимальное кол-во звезд (необязатено)",
+                        "description": "Минимальное кол-во звезд (необязательно)",
                         "name": "stars-from",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Максимальное кол-во звезд (необязатено)",
+                        "description": "Максимальное кол-во звезд (необязательно)",
                         "name": "stars-to",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Упорядочить по звездам ('asc' возрастание, 'desc' убывание) (необязатено)",
+                        "description": "Упорядочить по звездам ('asc' возрастание, 'desc' убывание) (необязательно)",
                         "name": "arrange",
                         "in": "query"
                     }

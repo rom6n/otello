@@ -170,12 +170,12 @@ func (v *FlightTicketHandler) Create() fiber.Handler {
 // @Accept json
 // @Produce json
 // @Param id query string true "ID авиабилета"
-// @Param city-from query string false "Новый из какого города (необязатено)"
-// @Param city-to query string false "Новый в какой город (необязатено)"
-// @Param quantity query int false "Новое количество билетов/мест (необязатено)"
-// @Param value query int false "Новая цена за билет (необязатено)"
-// @Param take-off query string false "Новые дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)"
-// @Param arrival query string false "Новые дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)"
+// @Param city-from query string false "Новый из какого города (необязательно)"
+// @Param city-to query string false "Новый в какой город (необязательно)"
+// @Param quantity query int false "Новое количество билетов/мест (необязательно)"
+// @Param value query int false "Новая цена за билет (необязательно)"
+// @Param take-off query string false "Новые дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязательно)"
+// @Param arrival query string false "Новые дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязательно)"
 // @Success 200 {object} httputils.SuccessResponse
 // @Failure 400 {object} httputils.ErrorResponse
 // @Failure 500 {object} httputils.ErrorResponse
@@ -256,10 +256,10 @@ func (v *FlightTicketHandler) Delete() fiber.Handler {
 // @Param city-from query string true "Из какого города"
 // @Param city-via query string false "Через какой город (по выбору)"
 // @Param city-to query string false "В какой город (по выбору)"
-// @Param quantity query int false "Количество билетов/мест (необязатено)"
-// @Param take-off query string false "Дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязатено)"
-// @Param arrival query string false "Дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязатено)"
-// @Param arrange query string false "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)"
+// @Param quantity query int false "Количество билетов/мест (необязательно)"
+// @Param take-off query string false "Дата и время взлета (формат: 2006-01-02T15:04:05Z) (необязательно)"
+// @Param arrival query string false "Дата и время посадки (формат: 2006-01-02T15:04:06Z) (необязательно)"
+// @Param arrange query string false "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязательно)"
 // @Success 200 {object} httputils.SuccessResponse
 // @Failure 400 {object} httputils.ErrorResponse
 // @Failure 500 {object} httputils.ErrorResponse

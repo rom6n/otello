@@ -109,7 +109,7 @@ func parseHotelParams(c *fiber.Ctx, allRequired bool, parseTo *hotel.Hotel) (*st
 // @Produce json
 // @Param city query string true "Город"
 // @Param stars query int true "Количество звёзд"
-// @Param name query string false "Название отеля (необязатено)"
+// @Param name query string false "Название отеля (необязательно)"
 // @Success 200 {object} httputils.SuccessResponse{data=hotel.Hotel}
 // @Failure 400 {object} httputils.ErrorResponse
 // @Failure 500 {object} httputils.ErrorResponse
@@ -139,9 +139,9 @@ func (v *HotelHandler) Create() fiber.Handler {
 // @Accept json
 // @Produce json
 // @Param id query string true "ID отеля"
-// @Param city query string false "Новый город (необязатено)"
-// @Param stars query int false "Новое количество звёзд (необязатено)"
-// @Param name query string false "Новое название отеля (необязатено)"
+// @Param city query string false "Новый город (необязательно)"
+// @Param stars query int false "Новое количество звёзд (необязательно)"
+// @Param name query string false "Новое название отеля (необязательно)"
 // @Success 200 {object} httputils.SuccessResponse{data=hotel.Hotel}
 // @Failure 400 {object} httputils.ErrorResponse
 // @Failure 500 {object} httputils.ErrorResponse
@@ -220,12 +220,12 @@ func (v *HotelHandler) Delete() fiber.Handler {
 // @Tags Отель
 // @Accept json
 // @Produce json
-// @Param id query string false "ID отеля (необязатено)"
-// @Param city query string false "Город (необязатено)"
-// @Param stars query int false "Количество звёзд (необязатено)"
-// @Param stars-from query int false "Минимальное кол-во звезд (необязатено)"
-// @Param stars-to query int false "Максимальное кол-во звезд (необязатено)"
-// @Param arrange query string false "Упорядочить по звездам ('asc' возрастание, 'desc' убывание) (необязатено)"
+// @Param id query string false "ID отеля (необязательно)"
+// @Param city query string false "Город (необязательно)"
+// @Param stars query int false "Количество звёзд (необязательно)"
+// @Param stars-from query int false "Минимальное кол-во звезд (необязательно)"
+// @Param stars-to query int false "Максимальное кол-во звезд (необязательно)"
+// @Param arrange query string false "Упорядочить по звездам ('asc' возрастание, 'desc' убывание) (необязательно)"
 // @Success 200 {object} httputils.SuccessResponse{data=[]hotel.Hotel}
 // @Failure 400 {object} httputils.ErrorResponse
 // @Failure 500 {object} httputils.ErrorResponse

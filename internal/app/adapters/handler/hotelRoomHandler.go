@@ -149,11 +149,11 @@ func (v *HotelRoomHandler) Create() fiber.Handler {
 // @Accept json
 // @Produce json
 // @Param id query string true "ID номера отеля"
-// @Param hotel-id query string false "Новый ID отеля (необязатено)"
-// @Param rooms query int false "Новое количество комнат (необязатено)"
-// @Param type query string false "Новый тип номера (standard, large, premium) (необязатено)"
-// @Param amount-people query int false "Новое количество человек (необязатено)"
-// @Param value query int false "Новая цена за номер (необязатено)"
+// @Param hotel-id query string false "Новый ID отеля (необязательно)"
+// @Param rooms query int false "Новое количество комнат (необязательно)"
+// @Param type query string false "Новый тип номера (standard, large, premium) (необязательно)"
+// @Param amount-people query int false "Новое количество человек (необязательно)"
+// @Param value query int false "Новая цена за номер (необязательно)"
 // @Success 200 {object} httputils.SuccessResponse{data=hotelroom.HotelRoom}
 // @Failure 400 {object} httputils.ErrorResponse
 // @Failure 500 {object} httputils.ErrorResponse
@@ -179,7 +179,14 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 
 		var foundedHotelRoom hotelroom.HotelRoom
 
-		err := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, hotelRoomUuidStr, false, &foundedHotelRoom)
+		parseErr1 := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, hotelRoomUuidStr, false, &foundedHotelRoom)
+		if parseErr1 != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
+				Success: false,
+				Message: "failed to update hotel room",
+				Error:   fmt.Sprintf("%v", parseErr1),
+			})
+		}
 
 		gottenHotelRoom, getErr := v.HotelRoomUsecase.Get(ctx, foundedHotelRoom.Uuid)
 		foundedHotelRoom = *gottenHotelRoom
@@ -191,11 +198,12 @@ func (v *HotelRoomHandler) Update() fiber.Handler {
 			})
 		}
 
-		if err != nil {
+		parseErr2 := ParseHotelRoomParams(hotelUuidStr, roomsStr, typeStr, amountPeopleStr, valueStr, hotelRoomUuidStr, false, &foundedHotelRoom)
+		if parseErr2 != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
 				Success: false,
 				Message: "failed to update hotel room",
-				Error:   fmt.Sprintf("%v", err),
+				Error:   fmt.Sprintf("%v", parseErr2),
 			})
 		}
 
@@ -268,21 +276,21 @@ func (v *HotelRoomHandler) Delete() fiber.Handler {
 // @Tags Номер отеля
 // @Accept json
 // @Produce json
-// @Param id query string false "ID номера отеля (необязатено)"
-// @Param hotel-id query string false "ID отеля (необязатено)"
-// @Param date-from query string false "Дата заселения/свободен ли (прим. 2016-10-06, год-месяц-день) (необязатено)"
-// @Param date-to query string false "Дата выезда/свободен ли (прим. 2016-10-06, год-месяц-день) (необязатено)"
-// @Param days query int false "Количество дней (необязатено)"
-// @Param rooms-from query int false "Минимальное количество комнат (необязатено)"
-// @Param rooms-to query int false "Максимальное количество комнат (необязатено)"
-// @Param type-first query string false "Первый тип (standard, large, premium) (необязатено)"
-// @Param type-second query string false "Второй тип (standard, large, premium) (необязатено)"
-// @Param type query string false "Единый тип (standard, large, premium) (при использовании перекрывает первый тип) (необязатено)"
-// @Param amount-people-from query int false "Минимальное количество человек (необязатено)"
-// @Param amount-people-to query int false "Максимальное количество человек (необязатено)"
-// @Param value-from query int false "Минимальная цена за номер (необязатено)"
-// @Param value-to query int false "Максимальная цена за номер (необязатено)"
-// @Param arrange query string false "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязатено)"
+// @Param id query string false "ID номера отеля (необязательно)"
+// @Param hotel-id query string false "ID отеля (необязательно)"
+// @Param date-from query string false "Дата заселения/свободен ли (прим. 2016-10-06, год-месяц-день) (необязательно)"
+// @Param date-to query string false "Дата выезда/свободен ли (прим. 2016-10-06, год-месяц-день) (необязательно)"
+// @Param days query int false "Количество дней (необязательно)"
+// @Param rooms-from query int false "Минимальное количество комнат (необязательно)"
+// @Param rooms-to query int false "Максимальное количество комнат (необязательно)"
+// @Param type-first query string false "Первый тип (standard, large, premium) (необязательно)"
+// @Param type-second query string false "Второй тип (standard, large, premium) (необязательно)"
+// @Param type query string false "Единый тип (standard, large, premium) (при использовании перекрывает первый тип) (необязательно)"
+// @Param amount-people-from query int false "Минимальное количество человек (необязательно)"
+// @Param amount-people-to query int false "Максимальное количество человек (необязательно)"
+// @Param value-from query int false "Минимальная цена за номер (необязательно)"
+// @Param value-to query int false "Максимальная цена за номер (необязательно)"
+// @Param arrange query string false "Упорядочить по цене ('asc' возрастание, 'desc' убывание) (необязательно)"
 // @Success 200 {object} httputils.SuccessResponse{data=[]hotelroom.HotelRoom}
 // @Failure 400 {object} httputils.ErrorResponse
 // @Failure 500 {object} httputils.ErrorResponse
