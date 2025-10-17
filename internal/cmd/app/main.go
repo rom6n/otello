@@ -41,8 +41,8 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
 
 	<-stop
-	shutdownTimeSecond := 3 * time.Second // mainly 35s
-	shutdownTime := 4                     // mainly 40s
+	shutdownTimeSecond := 35 * time.Second // mainly 35s
+	shutdownTime := 37                     // mainly 37s
 
 	ctxShutdown, cancel := context.WithTimeout(ctx, shutdownTimeSecond)
 	defer cancel()

@@ -122,7 +122,7 @@ func CheckJwtMiddleware(jwtRepo jwtutils.JwtRepository, adminOnly bool) fiber.Ha
 		}
 
 		c.Locals("id", userUuid)
-		c.Locals("role", userRole)
+		c.Locals("role", string(userRole))
 		flog.Info("MIDDLEWARE PASSED IP: ", c.IP())
 
 		return c.Next()
