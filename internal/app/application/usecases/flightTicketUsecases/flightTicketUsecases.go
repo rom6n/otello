@@ -12,6 +12,8 @@ import (
 	"github.com/rom6n/otello/internal/app/domain/flightticket"
 )
 
+const maxLayover = int64(24 * 60 * 60)
+
 type FlightTicketUsecases interface {
 	Create(ctx context.Context, flightTicket *flightticket.FlightTicket) error
 	Update(ctx context.Context, newFlightTicketData *flightticket.FlightTicket) error
@@ -98,51 +100,186 @@ func (v *flightTicketUsecase) GetWithParams(ctx context.Context, flightTicketFil
 		return nil, nil, getAllErr
 	}
 
-	index := make(map[string][]*flightticket.FlightTicket)
-	for i := range allFoundFlightTickets {
-		f := &allFoundFlightTickets[i]
-		index[f.CityFrom] = append(index[f.CityFrom], f)
-	}
-
-	for city := range index {
-		sort.Slice(index[city], func(i, j int) bool {
-			return *index[city][i].TakeOff < *index[city][j].TakeOff
-		})
-	}
-
-	const maxLayover = int64(24 * 60 * 60)
 	pq := &PriorityQueue{}
 	heap.Init(pq)
 
-	for _, f := range index[flightTicketFilter.CityFrom] {
-		firstDep := *f.TakeOff
-		lastArr := f.Arrival
-		price := uint64(0)
-		if f.Value != nil {
-			price = uint64(*f.Value)
-		}
-		p := &Path{
-			Flights:      []*flightticket.FlightTicket{f},
-			FirstTakeOff: firstDep,
-			LastArrival:  lastArr,
-			TotalPrice:   price,
-		}
-		c := &candidate{
-			path:     p,
-			priority: p.Duration(),
-			priceTie: p.TotalPrice,
-		}
-		heap.Push(pq, c)
+	index := createFlightsIndex(allFoundFlightTickets)
+	fillHeapWithFlightsFromIndex(pq, index, flightTicketFilter.CityFrom)
+	results := findPathsLogic(pq, index, len(allFoundFlightTickets), flightTicketFilter.CityTo, cityVia)
+	straightPaths, layoverPathsOr3CityPaths, hasLayover := checkResultForBestPaths(results, cityVia)
+
+	if len(straightPaths) > 0 {
+		straightPaths = sortStraightPathsCategories(straightPaths)
+	} else if len(layoverPathsOr3CityPaths) > 0 && !hasLayover {
+		layoverPathsOr3CityPaths = sortLayoverOr3CityPathsCategories(layoverPathsOr3CityPaths)
 	}
 
-	results := make([]Path, 0, len(allFoundFlightTickets))
+	straightPaths, layoverPathsOr3CityPaths = sortAllIfNeed(needSort, isAsc, straightPaths, layoverPathsOr3CityPaths)
+
+	return layoverPathsOr3CityPaths, straightPaths, nil
+}
+
+func (v *flightTicketUsecase) Buy(ctx context.Context, flightTicketUuid uuid.UUID, amountPassengers uint32) (*flightticket.FlightTicket, error) {
+	usecaseCtx, cancel := v.getContext(ctx)
+	defer cancel()
+
+	foundFlightTicket, getErr := v.Get(ctx, flightTicketUuid)
+	if getErr != nil {
+		return nil, getErr
+	}
+
+	if foundFlightTicket.Quantity < amountPassengers {
+		return nil, fmt.Errorf("there are no empty seats. only %v left", foundFlightTicket.Quantity)
+	}
+
+	buyErr := v.flightTicketRepo.BuyFlightTicket(usecaseCtx, flightTicketUuid, amountPassengers)
+	if buyErr != nil {
+		return nil, buyErr
+	}
+
+	foundFlightTicket.Quantity = amountPassengers
+	if foundFlightTicket.Value != nil {
+		*foundFlightTicket.Value *= amountPassengers
+	}
+
+	return foundFlightTicket, nil
+}
+
+func sortAllIfNeed(needSort, isAsc bool, straightPaths []flightticket.FlightTicket, layoverPathsOr3CityPaths []Path) ([]flightticket.FlightTicket, []Path) {
+	if needSort {
+		if isAsc {
+			sort.Slice(straightPaths, func(i, j int) bool {
+				return *straightPaths[i].Value < *straightPaths[j].Value
+			})
+			sort.Slice(layoverPathsOr3CityPaths, func(i, j int) bool {
+				return layoverPathsOr3CityPaths[i].TotalPrice < layoverPathsOr3CityPaths[j].TotalPrice
+			})
+		} else {
+			sort.Slice(straightPaths, func(i, j int) bool {
+				return *straightPaths[i].Value > *straightPaths[j].Value
+			})
+			sort.Slice(layoverPathsOr3CityPaths, func(i, j int) bool {
+				return layoverPathsOr3CityPaths[i].TotalPrice > layoverPathsOr3CityPaths[j].TotalPrice
+			})
+		}
+	}
+
+	return straightPaths, layoverPathsOr3CityPaths
+}
+
+func sortLayoverOr3CityPathsCategories(layoverPathsOr3CityPaths []Path) []Path {
+	cheapestId := 0
+	cheapestValue := -1
+
+	fastestId := 0
+	fastestDuration := -1
+
+	for i, path := range layoverPathsOr3CityPaths {
+		if (int(path.Duration()) < fastestDuration) || fastestDuration == -1 {
+			fastestDuration = int(path.Duration())
+			fastestId = i
+		}
+		if (int(path.TotalPrice) < cheapestValue) || cheapestValue == -1 {
+			cheapestValue = int(path.TotalPrice)
+			cheapestId = i
+		}
+	}
+
+	layoverPathsOr3CityPaths[cheapestId].Category = flightticket.Cheapest
+	layoverPathsOr3CityPaths[fastestId].Category = flightticket.Fastest
+	if cheapestId == fastestId {
+		layoverPathsOr3CityPaths[cheapestId].Category = flightticket.CheapestFastest
+	}
+
+	memory0 := layoverPathsOr3CityPaths[0]
+	layoverPathsOr3CityPaths[0] = layoverPathsOr3CityPaths[fastestId]
+	if cheapestId != fastestId {
+		memory1 := layoverPathsOr3CityPaths[1]
+		layoverPathsOr3CityPaths[1] = layoverPathsOr3CityPaths[cheapestId]
+		layoverPathsOr3CityPaths[cheapestId] = memory1
+	}
+	layoverPathsOr3CityPaths[fastestId] = memory0
+
+	return layoverPathsOr3CityPaths
+}
+
+func sortStraightPathsCategories(straightPaths []flightticket.FlightTicket) []flightticket.FlightTicket {
+	cheapestId := 0
+	cheapestValue := -1
+
+	fastestId := 0
+	fastestDuration := -1
+	for i, flight := range straightPaths {
+		if (int(*flight.Value) < cheapestValue) || cheapestValue == -1 {
+			cheapestValue = int(*flight.Value)
+			cheapestId = i
+		}
+
+		if (int(flight.Arrival-*flight.TakeOff) < fastestDuration) || fastestDuration == -1 {
+			fastestDuration = int(flight.Arrival - *flight.TakeOff)
+			fastestId = i
+		}
+	}
+
+	straightPaths[cheapestId].Category = flightticket.Cheapest
+	straightPaths[fastestId].Category = flightticket.Fastest
+	if cheapestId == fastestId {
+		straightPaths[cheapestId].Category = flightticket.CheapestFastest
+	}
+
+	memory0 := straightPaths[0]
+	straightPaths[0] = straightPaths[fastestId]
+	if cheapestId != fastestId {
+		memory1 := straightPaths[1]
+		straightPaths[1] = straightPaths[cheapestId]
+		straightPaths[cheapestId] = memory1
+	}
+	straightPaths[fastestId] = memory0
+
+	return straightPaths
+}
+
+func checkResultForBestPaths(results []Path, cityVia *string) ([]flightticket.FlightTicket, []Path, bool) {
+	var straightPaths []flightticket.FlightTicket
+	var layoverPathsOr3CityPaths []Path
+	hasLayover := false
+
+	if cityVia != nil {
+		for _, result := range results {
+			if len(result.Flights) == 2 {
+				layoverPathsOr3CityPaths = append(layoverPathsOr3CityPaths, result)
+			}
+		}
+
+		if len(layoverPathsOr3CityPaths) == 0 && len(results) != 0 {
+			layoverPathsOr3CityPaths = append(layoverPathsOr3CityPaths, results[0])
+			hasLayover = true
+		}
+	} else {
+		for _, result := range results {
+			if len(result.Flights) == 1 {
+				straightPaths = append(straightPaths, *result.Flights[0])
+			}
+		}
+
+		if len(straightPaths) == 0 && len(results) != 0 {
+			layoverPathsOr3CityPaths = append(layoverPathsOr3CityPaths, results[0])
+			hasLayover = true
+		}
+	}
+
+	return straightPaths, layoverPathsOr3CityPaths, hasLayover
+}
+
+func findPathsLogic(pq *PriorityQueue, index map[string][]*flightticket.FlightTicket, allFoundFlightTicketsLen int, cityTo string, cityVia *string) []Path {
+	results := make([]Path, 0, allFoundFlightTicketsLen)
 
 	for pq.Len() > 0 {
 		item := heap.Pop(pq).(*candidate)
 		cur := item.path
 		last := cur.Flights[len(cur.Flights)-1]
 
-		if last.CityTo == flightTicketFilter.CityTo {
+		if last.CityTo == cityTo {
 			if cityVia != nil {
 				if wasInViaCity(cur, *cityVia) {
 					results = append(results, *cur)
@@ -193,146 +330,46 @@ func (v *flightTicketUsecase) GetWithParams(ctx context.Context, flightTicketFil
 		}
 	}
 
-	var straightPaths []flightticket.FlightTicket
-	var layoverPathsOr3CityPaths []Path
-	hasLayover := false
-
-	if cityVia != nil {
-		for _, result := range results {
-			if len(result.Flights) == 2 {
-				layoverPathsOr3CityPaths = append(layoverPathsOr3CityPaths, result)
-			}
-		}
-
-		if len(layoverPathsOr3CityPaths) == 0 && len(results) != 0 {
-			layoverPathsOr3CityPaths = append(layoverPathsOr3CityPaths, results[0])
-			hasLayover = true
-		}
-	} else {
-		for _, result := range results {
-			if len(result.Flights) == 1 {
-				straightPaths = append(straightPaths, *result.Flights[0])
-			}
-		}
-
-		if len(straightPaths) == 0 && len(results) != 0 {
-			layoverPathsOr3CityPaths = append(layoverPathsOr3CityPaths, results[0])
-			hasLayover = true
-		}
-	}
-
-	if len(straightPaths) > 0 {
-		cheapestId := 0
-		cheapestValue := -1
-
-		fastestId := 0
-		fastestDuration := -1
-		for i, flight := range straightPaths {
-			if (int(*flight.Value) < cheapestValue) || cheapestValue == -1 {
-				cheapestValue = int(*flight.Value)
-				cheapestId = i
-			}
-
-			if (int(flight.Arrival-*flight.TakeOff) < fastestDuration) || fastestDuration == -1 {
-				fastestDuration = int(flight.Arrival - *flight.TakeOff)
-				fastestId = i
-			}
-		}
-
-		straightPaths[cheapestId].Category = flightticket.Cheapest
-		straightPaths[fastestId].Category = flightticket.Fastest
-		if cheapestId == fastestId {
-			straightPaths[cheapestId].Category = flightticket.CheapestFastest
-		}
-
-		memory0 := straightPaths[0]
-		straightPaths[0] = straightPaths[fastestId]
-		if cheapestId != fastestId {
-			memory1 := straightPaths[1]
-			straightPaths[1] = straightPaths[cheapestId]
-			straightPaths[cheapestId] = memory1
-		}
-		straightPaths[fastestId] = memory0
-	} else if len(layoverPathsOr3CityPaths) > 0 && !hasLayover {
-		cheapestId := 0
-		cheapestValue := -1
-
-		fastestId := 0
-		fastestDuration := -1
-
-		for i, path := range layoverPathsOr3CityPaths {
-			if (int(path.Duration()) < fastestDuration) || fastestDuration == -1 {
-				fastestDuration = int(path.Duration())
-				fastestId = i
-			}
-			if (int(path.TotalPrice) < cheapestValue) || cheapestValue == -1 {
-				cheapestValue = int(path.TotalPrice)
-				cheapestId = i
-			}
-		}
-
-		layoverPathsOr3CityPaths[cheapestId].Category = flightticket.Cheapest
-		layoverPathsOr3CityPaths[fastestId].Category = flightticket.Fastest
-		if cheapestId == fastestId {
-			layoverPathsOr3CityPaths[cheapestId].Category = flightticket.CheapestFastest
-		}
-
-		memory0 := layoverPathsOr3CityPaths[0]
-		layoverPathsOr3CityPaths[0] = layoverPathsOr3CityPaths[fastestId]
-		if cheapestId != fastestId {
-			memory1 := layoverPathsOr3CityPaths[1]
-			layoverPathsOr3CityPaths[1] = layoverPathsOr3CityPaths[cheapestId]
-			layoverPathsOr3CityPaths[cheapestId] = memory1
-		}
-		layoverPathsOr3CityPaths[fastestId] = memory0
-
-	}
-
-	if needSort {
-		if isAsc {
-			sort.Slice(straightPaths, func(i, j int) bool {
-				return *straightPaths[i].Value < *straightPaths[j].Value
-			})
-			sort.Slice(layoverPathsOr3CityPaths, func(i, j int) bool {
-				return layoverPathsOr3CityPaths[i].TotalPrice < layoverPathsOr3CityPaths[j].TotalPrice
-			})
-		} else {
-			sort.Slice(straightPaths, func(i, j int) bool {
-				return *straightPaths[i].Value > *straightPaths[j].Value
-			})
-			sort.Slice(layoverPathsOr3CityPaths, func(i, j int) bool {
-				return layoverPathsOr3CityPaths[i].TotalPrice > layoverPathsOr3CityPaths[j].TotalPrice
-			})
-		}
-	}
-
-	return layoverPathsOr3CityPaths, straightPaths, nil
+	return results
 }
 
-func (v *flightTicketUsecase) Buy(ctx context.Context, flightTicketUuid uuid.UUID, amountPassengers uint32) (*flightticket.FlightTicket, error) {
-	usecaseCtx, cancel := v.getContext(ctx)
-	defer cancel()
+func fillHeapWithFlightsFromIndex(pq *PriorityQueue, index map[string][]*flightticket.FlightTicket, needCityFrom string) {
+	for _, f := range index[needCityFrom] {
+		firstDep := *f.TakeOff
+		lastArr := f.Arrival
+		price := uint64(0)
+		if f.Value != nil {
+			price = uint64(*f.Value)
+		}
+		p := &Path{
+			Flights:      []*flightticket.FlightTicket{f},
+			FirstTakeOff: firstDep,
+			LastArrival:  lastArr,
+			TotalPrice:   price,
+		}
+		c := &candidate{
+			path:     p,
+			priority: p.Duration(),
+			priceTie: p.TotalPrice,
+		}
+		heap.Push(pq, c)
+	}
+}
 
-	foundFlightTicket, getErr := v.Get(ctx, flightTicketUuid)
-	if getErr != nil {
-		return nil, getErr
+func createFlightsIndex(allFlightTickets []flightticket.FlightTicket) map[string][]*flightticket.FlightTicket {
+	index := make(map[string][]*flightticket.FlightTicket)
+	for i := range allFlightTickets {
+		f := &allFlightTickets[i]
+		index[f.CityFrom] = append(index[f.CityFrom], f)
 	}
 
-	if foundFlightTicket.Quantity < amountPassengers {
-		return nil, fmt.Errorf("there are no empty seats. only %v left", foundFlightTicket.Quantity)
+	for city := range index {
+		sort.Slice(index[city], func(i, j int) bool {
+			return *index[city][i].TakeOff < *index[city][j].TakeOff
+		})
 	}
 
-	buyErr := v.flightTicketRepo.BuyFlightTicket(usecaseCtx, flightTicketUuid, amountPassengers)
-	if buyErr != nil {
-		return nil, buyErr
-	}
-
-	foundFlightTicket.Quantity = amountPassengers
-	if foundFlightTicket.Value != nil {
-		*foundFlightTicket.Value *= amountPassengers
-	}
-
-	return foundFlightTicket, nil
+	return index
 }
 
 func wasInViaCity(path *Path, viaCity string) bool {

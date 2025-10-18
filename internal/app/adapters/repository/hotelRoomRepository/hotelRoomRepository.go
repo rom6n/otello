@@ -16,7 +16,7 @@ type HotelRoomRepository interface {
 	UpdateHotelRoom(ctx context.Context, hotelRoom *hotelroom.HotelRoom) error
 	DeleteHotelRoom(ctx context.Context, hotelRoomUuid uuid.UUID) error
 	GetHotelRoom(ctx context.Context, hotelRoomUuid uuid.UUID) (*hotelroom.HotelRoom, error)
-	GetHotelRoomsWithParams(ctx context.Context, firstFilter, secondFilter *hotelroom.HotelRoom) ([]hotelroom.HotelRoom, error)
+	GetHotelRoomsWithParams(ctx context.Context, filter *hotelroom.FindHotelRoomFilterDTO) ([]hotelroom.HotelRoom, error)
 }
 
 type hotelRoomRepo struct {
@@ -111,16 +111,15 @@ func (v *hotelRoomRepo) GetHotelRoom(ctx context.Context, hotelRoomUuid uuid.UUI
 	return &hotelRoom, nil
 }
 
-func (v *hotelRoomRepo) GetHotelRoomsWithParams(ctx context.Context, firstFilter, secondFilter *hotelroom.HotelRoom) ([]hotelroom.HotelRoom, error) {
+func (v *hotelRoomRepo) GetHotelRoomsWithParams(ctx context.Context, filter *hotelroom.FindHotelRoomFilterDTO) ([]hotelroom.HotelRoom, error) {
 	dbCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
 	collection := v.getCollection()
 
-	fmt.Printf("filter1: %+v\n", firstFilter)
-	fmt.Printf("filter2: %+v\n", secondFilter)
+	fmt.Printf("filter: %+v\n", filter)
 
-	findParams := ParseParamsToSearchFilter(firstFilter, secondFilter)
+	findParams := ParseParamsToSearchFilter(filter)
 	if len(findParams) == 0 {
 		findParams = bson.D{}
 	}
@@ -141,68 +140,68 @@ func (v *hotelRoomRepo) GetHotelRoomsWithParams(ctx context.Context, firstFilter
 	return hotelRooms, nil
 }
 
-func ParseParamsToSearchFilter(firstFilter, secondFilter *hotelroom.HotelRoom) bson.D {
+func ParseParamsToSearchFilter(filter *hotelroom.FindHotelRoomFilterDTO) bson.D {
 	var findParams bson.D
 
-	if firstFilter.Uuid != uuid.Nil {
-		findParams = append(findParams, bson.E{Key: "_id", Value: firstFilter.Uuid})
+	if filter.Uuid != uuid.Nil {
+		findParams = append(findParams, bson.E{Key: "_id", Value: filter.Uuid})
 	}
 
-	if firstFilter.Rooms > 0 || secondFilter.Rooms > 0 {
+	if filter.RoomsFrom > 0 || filter.RoomsTo > 0 {
 		rangeQuery := bson.D{}
 
-		if firstFilter.Rooms > 0 {
-			rangeQuery = append(rangeQuery, bson.E{Key: "$gte", Value: firstFilter.Rooms})
+		if filter.RoomsFrom > 0 {
+			rangeQuery = append(rangeQuery, bson.E{Key: "$gte", Value: filter.RoomsFrom})
 		}
-		if secondFilter.Rooms > 0 {
-			rangeQuery = append(rangeQuery, bson.E{Key: "$lte", Value: secondFilter.Rooms})
+		if filter.RoomsTo > 0 {
+			rangeQuery = append(rangeQuery, bson.E{Key: "$lte", Value: filter.RoomsTo})
 		}
 		if len(rangeQuery) > 0 {
 			findParams = append(findParams, bson.E{Key: "rooms", Value: rangeQuery})
 		}
 	}
 
-	if firstFilter.Value != nil || secondFilter.Value != nil {
+	if filter.ValueFrom != nil || filter.ValueTo != nil {
 		rangeQuery := bson.D{}
 
-		if firstFilter.Value != nil {
-			rangeQuery = append(rangeQuery, bson.E{Key: "$gte", Value: *firstFilter.Value})
+		if filter.ValueFrom != nil {
+			rangeQuery = append(rangeQuery, bson.E{Key: "$gte", Value: *filter.ValueFrom})
 		}
-		if secondFilter.Value != nil {
-			rangeQuery = append(rangeQuery, bson.E{Key: "$lte", Value: *secondFilter.Value})
+		if filter.ValueTo != nil {
+			rangeQuery = append(rangeQuery, bson.E{Key: "$lte", Value: *filter.ValueTo})
 		}
 		if len(rangeQuery) > 0 {
 			findParams = append(findParams, bson.E{Key: "value", Value: rangeQuery})
 		}
 	}
 
-	if firstFilter.AmountPeople > 0 || secondFilter.AmountPeople > 0 {
+	if filter.AmountPeopleFrom > 0 || filter.AmountPeopleTo > 0 {
 		rangeQuery := bson.D{}
 
-		if firstFilter.AmountPeople > 0 {
-			rangeQuery = append(rangeQuery, bson.E{Key: "$gte", Value: firstFilter.AmountPeople})
+		if filter.AmountPeopleFrom > 0 {
+			rangeQuery = append(rangeQuery, bson.E{Key: "$gte", Value: filter.AmountPeopleFrom})
 		}
-		if secondFilter.AmountPeople > 0 {
-			rangeQuery = append(rangeQuery, bson.E{Key: "$lte", Value: secondFilter.AmountPeople})
+		if filter.AmountPeopleTo > 0 {
+			rangeQuery = append(rangeQuery, bson.E{Key: "$lte", Value: filter.AmountPeopleTo})
 		}
 		if len(rangeQuery) > 0 {
 			findParams = append(findParams, bson.E{Key: "amount_people", Value: rangeQuery})
 		}
 	}
 
-	if firstFilter.Type != "" && secondFilter.Type != "" {
+	if filter.TypeFirst != "" && filter.TypeSecond != "" {
 		findParams = append(findParams, bson.E{
 			Key:   "type",
-			Value: bson.D{{Key: "$in", Value: bson.A{firstFilter.Type, secondFilter.Type}}},
+			Value: bson.D{{Key: "$in", Value: bson.A{filter.TypeFirst, filter.TypeSecond}}},
 		})
-	} else if firstFilter.Type != "" {
-		findParams = append(findParams, bson.E{Key: "type", Value: firstFilter.Type})
-	} else if secondFilter.Type != "" {
-		findParams = append(findParams, bson.E{Key: "type", Value: secondFilter.Type})
+	} else if filter.TypeFirst != "" {
+		findParams = append(findParams, bson.E{Key: "type", Value: filter.TypeFirst})
+	} else if filter.TypeSecond != "" {
+		findParams = append(findParams, bson.E{Key: "type", Value: filter.TypeSecond})
 	}
 
-	if firstFilter.HotelUuid != uuid.Nil {
-		findParams = append(findParams, bson.E{Key: "hotel_uuid", Value: firstFilter.HotelUuid})
+	if filter.HotelUuid != uuid.Nil {
+		findParams = append(findParams, bson.E{Key: "hotel_uuid", Value: filter.HotelUuid})
 	}
 
 	return findParams

@@ -11,26 +11,27 @@ type CookieUsage int
 const (
 	JwtAccessToken  CookieUsage = 1
 	JwtRefreshToken CookieUsage = 2
-)
 
-const SecureNeed = false
+	jwtAccessTokenMaxAgeSeconds  = 600
+	jwtRefreshTokenMaxAgeSeconds = 7 * 24 * 3600
+
+	SecureNeed   = false
+	httpOnlyNeed = true
+)
 
 func BuildCookie(value string, usage CookieUsage) *fiber.Cookie {
 	var name string
 	var maxAge int
 	var expires time.Time
-	var httpOnly bool
 
 	switch usage {
 	case JwtAccessToken:
-		maxAge = 600
-		expires = time.Now().Add(10 * time.Minute)
-		httpOnly = true
+		maxAge = jwtAccessTokenMaxAgeSeconds
+		expires = time.Now().Add(jwtAccessTokenMaxAgeSeconds * time.Second)
 		name = "jwtToken"
 	case JwtRefreshToken:
-		maxAge = 7 * 24 * 3600
-		expires = time.Now().Add(7 * 24 * 3600 * time.Second)
-		httpOnly = true
+		maxAge = jwtRefreshTokenMaxAgeSeconds
+		expires = time.Now().Add(jwtRefreshTokenMaxAgeSeconds * time.Second)
 		name = "jwtRefreshToken"
 	}
 
@@ -41,6 +42,6 @@ func BuildCookie(value string, usage CookieUsage) *fiber.Cookie {
 		Expires:  expires,
 		Secure:   SecureNeed,
 		SameSite: fiber.CookieSameSiteStrictMode,
-		HTTPOnly: httpOnly,
+		HTTPOnly: httpOnlyNeed,
 	}
 }

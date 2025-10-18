@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rom6n/otello/internal/app/adapters/repository/rentrepository"
 	"github.com/rom6n/otello/internal/app/domain/rent"
 	"github.com/rom6n/otello/internal/app/domain/user"
@@ -13,7 +12,7 @@ import (
 
 type RentUsecases interface {
 	Create(ctx context.Context, rent *rent.Rent) error
-	Delete(ctx context.Context, rentUuid, userUuid uuid.UUID, userRole string) error
+	Delete(ctx context.Context, dto rent.DeleteDTO) error
 }
 
 type rentUsecase struct {
@@ -55,20 +54,20 @@ func (v *rentUsecase) Create(ctx context.Context, rent *rent.Rent) error {
 	return nil
 }
 
-func (v *rentUsecase) Delete(ctx context.Context, rentUuid, userUuid uuid.UUID, userRole string) error {
+func (v *rentUsecase) Delete(ctx context.Context, dto rent.DeleteDTO) error {
 	usecaseCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
-	foundedRent, findErr := v.rentRepo.GetRent(usecaseCtx, rentUuid)
+	foundedRent, findErr := v.rentRepo.GetRent(usecaseCtx, dto.Uuid)
 	if findErr != nil {
 		return findErr
 	}
 
-	if userRole != string(user.RoleAdmin) && foundedRent.RenterUuid != userUuid {
+	if dto.UserRole != string(user.RoleAdmin) && foundedRent.RenterUuid != dto.UserUuid {
 		return fmt.Errorf("you dont have permission to delete this rent")
 	}
 
-	err := v.rentRepo.DeleteRent(usecaseCtx, rentUuid)
+	err := v.rentRepo.DeleteRent(usecaseCtx, dto.Uuid)
 	if err != nil {
 		return err
 	}

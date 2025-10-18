@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"regexp"
 
 	"github.com/gofiber/fiber/v2"
 	flog "github.com/gofiber/fiber/v2/log"
@@ -14,12 +13,6 @@ import (
 
 type UserHandler struct {
 	UserUsecase userusecases.UserUsecases
-}
-
-func IsEmailCorrect(email string) bool {
-	regex := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
-	re := regexp.MustCompile(regex)
-	return re.MatchString(email)
 }
 
 // @Summary Зарегистрироваться
@@ -41,31 +34,21 @@ func (v *UserHandler) Register() fiber.Handler {
 		email := c.Query("email")
 		password := c.Query("password")
 
+		unsuccessMessage := "failed to register"
+
 		if name == "" || email == "" || password == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to register",
-				Error:   "query values 'name', 'email' and 'password' are required",
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "query values 'name', 'email' and 'password' are required", nil, fiber.StatusBadRequest)
 		}
 
-		if !IsEmailCorrect(email) {
-			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to register",
-				Error:   "invalid email",
-			})
+		if !httputils.IsEmailCorrect(email) {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "invalid email address", nil, fiber.StatusBadRequest)
 		}
 
 		newUser := user.NewUser(name, email, password)
 
-		jwtRefreshCookie, jwtAccessCookie, newUser, err := v.UserUsecase.Register(ctx, newUser)
+		jwtRefreshCookie, jwtAccessCookie, err := v.UserUsecase.Register(ctx, newUser)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to register",
-				Error:   fmt.Sprintf("%v", err),
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
 		c.Cookie(jwtRefreshCookie)
@@ -96,29 +79,19 @@ func (v *UserHandler) Login() fiber.Handler {
 		email := c.Query("email")
 		password := c.Query("password")
 
+		unsuccessMessage := "failed to login"
+
 		if email == "" || password == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to login",
-				Error:   "email and password are required",
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "query values 'email' and 'password' are required", nil, fiber.StatusBadRequest)
 		}
 
-		if !IsEmailCorrect(email) {
-			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to login",
-				Error:   "invalid email",
-			})
+		if !httputils.IsEmailCorrect(email) {
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "invalid email address", nil, fiber.StatusBadRequest)
 		}
 
 		jwtRefreshCookie, jwtAccessCookie, foundUser, err := v.UserUsecase.Login(ctx, email, password)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to login",
-				Error:   fmt.Sprintf("%v", err),
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
 		c.Cookie(jwtRefreshCookie)
@@ -147,36 +120,26 @@ func (v *UserHandler) ChangeName() fiber.Handler {
 		ctx := c.Context()
 		newName := c.Query("name")
 
+		unsuccessMessage := "failed to change the name"
+
 		userIdStr := c.Locals("id").(string)
-		userId, parseErr := uuid.Parse(userIdStr)
-		if parseErr != nil {
-			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseErr)
-			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to change a name",
-				Error:   fmt.Sprintf("uuid parse error: %v", parseErr),
-			})
+		userId, parseUuidErr := uuid.Parse(userIdStr)
+		if parseUuidErr != nil {
+			flog.Warnf("Error parsing user UUID from Locals: %v\n", parseUuidErr)
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("uuid parse error: %v", parseUuidErr), nil, fiber.StatusInternalServerError)
 		}
 
 		if newName == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to change a name",
-				Error:   "dont forget to enter a new name",
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "new name is required", nil, fiber.StatusBadRequest)
 		}
 
 		if err := v.UserUsecase.ChangeName(ctx, userId, newName); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to change a name",
-				Error:   fmt.Sprintf("%v", err),
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
 		return c.JSON(httputils.Response{
 			Success: true,
-			Message: fmt.Sprintf("successfully changed name to '%v'", newName),
+			Message: fmt.Sprintf("successfully changed the name to '%v'", newName),
 		})
 	}
 }
@@ -196,41 +159,28 @@ func (v *UserHandler) GetAdminRole() fiber.Handler {
 		ctx := c.Context()
 		password := c.Query("password")
 
+		unsuccessMessage := "failed to get admin role"
+
 		if password == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to change a role",
-				Error:   "query value 'password' is required",
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, "query value 'password' is required", nil, fiber.StatusBadRequest)
 		}
 
 		userUuidStr := c.Locals("id").(string)
 		userId, parseErr := uuid.Parse(userUuidStr)
 		if parseErr != nil {
-			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseErr)
-			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to change a role",
-				Error:   fmt.Sprintf("uuid parse error: %v", parseErr),
-			})
+			flog.Warnf("Error parsing user UUID from Locals: %v\n", parseErr)
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("uuid parse error: %v", parseErr), nil, fiber.StatusInternalServerError)
 		}
 
 		newJwtRefreshCookie, newJwtAccessCookie, err := v.UserUsecase.ChangeRole(ctx, userId, user.RoleAdmin, password)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to change a role",
-				Error:   fmt.Sprintf("%v", err),
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
 		c.Cookie(newJwtRefreshCookie)
 		c.Cookie(newJwtAccessCookie)
 
-		return c.JSON(httputils.Response{
-			Success: true,
-			Message: "successfully changed role to 'admin'",
-		})
+		return httputils.HandleSuccess(c, "successfully changed role to 'admin'", nil)
 	}
 }
 
@@ -246,33 +196,23 @@ func (v *UserHandler) GetAdminRole() fiber.Handler {
 func (v *UserHandler) GetUserRole() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := c.Context()
+		unsuccessMessage := "failed to get user role"
 
 		userUuidStr := c.Locals("id").(string)
 		userId, parseErr := uuid.Parse(userUuidStr)
 		if parseErr != nil {
-			flog.Warnf("Error parsing user UUID from JWT: %v\n", parseErr)
-			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to change a role",
-				Error:   fmt.Sprintf("uuid parse error: %v", parseErr),
-			})
+			flog.Warnf("Error parsing user UUID from Locals: %v\n", parseErr)
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("uuid parse error: %v", parseErr), nil, fiber.StatusInternalServerError)
 		}
 
 		newJwtRefreshCookie, newJwtAccessCookie, err := v.UserUsecase.ChangeRole(ctx, userId, user.RoleUser, "")
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(httputils.Response{
-				Success: false,
-				Message: "failed to change a role",
-				Error:   fmt.Sprintf("%v", err),
-			})
+			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
 		c.Cookie(newJwtRefreshCookie)
 		c.Cookie(newJwtAccessCookie)
 
-		return c.JSON(httputils.Response{
-			Success: true,
-			Message: "successfully changed role to 'user'",
-		})
+		return httputils.HandleSuccess(c, "successfully changed role to 'user'", nil)
 	}
 }

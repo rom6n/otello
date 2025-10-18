@@ -1,6 +1,7 @@
 package httputils
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -57,4 +58,10 @@ func QueryOneOf(c *fiber.Ctx, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+func IsEmailCorrect(email string) bool {
+	regex := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
+	re := regexp.MustCompile(regex)
+	return re.MatchString(email)
 }

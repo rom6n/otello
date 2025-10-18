@@ -12,6 +12,12 @@ type Rent struct {
 	DateTo     int64     `json:"date_to" bson:"date_to"`
 }
 
+type DeleteDTO struct {
+	Uuid     uuid.UUID
+	UserUuid uuid.UUID
+	UserRole string
+}
+
 func NewRent(roomUuid, renterUuid uuid.UUID, dateFrom int64, dateTo int64) *Rent {
 	return &Rent{
 		Uuid:       uuid.New(),

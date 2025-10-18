@@ -21,6 +21,29 @@ type HotelRoom struct {
 	Value        *int64    `json:"value" bson:"value"`                 // can have 2 values (from, to)
 }
 
+type FindHotelRoomDTO struct {
+	Date         *int64
+	Rooms        uint32
+	Type         HotelType
+	AmountPeople uint32
+	Value        *int64
+}
+type FindHotelRoomFilterDTO struct {
+	Uuid             uuid.UUID
+	HotelUuid        uuid.UUID
+	DateFrom         *int64
+	DateTo           *int64
+	RoomsFrom        uint32
+	RoomsTo          uint32
+	TypeFirst        string
+	TypeSecond       string
+	AmountPeopleFrom uint32
+	AmountPeopleTo   uint32
+	ValueFrom        *int64
+	ValueTo          *int64
+	Arrange          string
+}
+
 func NewHotelRoom(hotelUuid uuid.UUID, rooms uint32, Type HotelType, amountPeople uint32, value *int64) *HotelRoom {
 	return &HotelRoom{
 		Uuid:         uuid.New(),

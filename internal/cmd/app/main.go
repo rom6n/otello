@@ -15,6 +15,11 @@ import (
 	"github.com/rom6n/otello/internal/pkg/http"
 )
 
+const (
+	defaultPort          = "8080"
+	shutdownDelaySeconds = 35
+)
+
 func main() {
 	ctx := context.Background()
 	if err := godotenv.Load(); err != nil {
@@ -29,7 +34,7 @@ func main() {
 	go func() {
 		port := os.Getenv("PORT")
 		if port == "" {
-			port = "8080" // default
+			port = defaultPort
 		}
 		if err := app.Listen(":" + port); err != nil {
 			log.Fatalf("error starting app: %v", err)
@@ -41,10 +46,10 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
 
 	<-stop
-	shutdownTimeSecond := 35 * time.Second // mainly 35s
-	shutdownTime := 37                     // mainly 37s
+	shutdownTimeout := shutdownDelaySeconds * time.Second
+	shutdownTime := shutdownDelaySeconds + 2
 
-	ctxShutdown, cancel := context.WithTimeout(ctx, shutdownTimeSecond)
+	ctxShutdown, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 
 	if shotdownErr := app.ShutdownWithContext(ctxShutdown); shotdownErr != nil {

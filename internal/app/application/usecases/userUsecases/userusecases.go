@@ -17,7 +17,7 @@ import (
 const AdminPasswordConst = "5SMpOxD4IFrXfCqy.T0jQA4ufiTHnLbLsUJySnL6mgB6u65ZmMjxiTsuXQcI"
 
 type UserUsecases interface {
-	Register(ctx context.Context, user *user.User) (*fiber.Cookie, *fiber.Cookie, *user.User, error)
+	Register(ctx context.Context, user *user.User) (*fiber.Cookie, *fiber.Cookie, error)
 	Login(ctx context.Context, email, password string) (*fiber.Cookie, *fiber.Cookie, *user.User, error)
 	ChangeName(ctx context.Context, userId uuid.UUID, newName string) error
 	ChangeRole(ctx context.Context, userId uuid.UUID, newRole user.UserRole, password string) (*fiber.Cookie, *fiber.Cookie, error)
@@ -41,33 +41,33 @@ func (v *userUsecase) getContext(ctx context.Context) (context.Context, context.
 	return context.WithTimeout(ctx, v.timeout)
 }
 
-func (v *userUsecase) Register(ctx context.Context, user *user.User) (*fiber.Cookie, *fiber.Cookie, *user.User, error) {
+func (v *userUsecase) Register(ctx context.Context, user *user.User) (*fiber.Cookie, *fiber.Cookie, error) {
 	usecaseCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
 	salt, saltErr := hashutils.GenerateSalt()
 	if saltErr != nil {
-		return nil, nil, nil, fmt.Errorf("failed to generate salt: %v", saltErr)
+		return nil, nil, fmt.Errorf("failed to generate salt: %v", saltErr)
 	}
 
 	hashedPassword := hashutils.HashPassword(user.Password, salt)
 	user.Password = hashedPassword
 
 	if createErr := v.userRepo.CreateUser(usecaseCtx, user); createErr != nil {
-		return nil, nil, nil, createErr
+		return nil, nil, createErr
 	}
 
 	jwtRefreshToken, jwtErr := v.jwtUtilsRepo.NewJwt(user.Uuid, user.Role, httputils.JwtRefreshToken)
 	if jwtErr != nil {
-		return nil, nil, nil, fmt.Errorf("failed to create refresh jwt token: %v", jwtErr)
+		return nil, nil, fmt.Errorf("failed to create refresh jwt token: %v", jwtErr)
 	}
 
 	jwtAccessToken, jwtErr := v.jwtUtilsRepo.NewJwt(user.Uuid, user.Role, httputils.JwtAccessToken)
 	if jwtErr != nil {
-		return nil, nil, nil, fmt.Errorf("failed to create access jwt token: %v", jwtErr)
+		return nil, nil, fmt.Errorf("failed to create access jwt token: %v", jwtErr)
 	}
 
-	return httputils.BuildCookie(jwtRefreshToken, httputils.JwtRefreshToken), httputils.BuildCookie(jwtAccessToken, httputils.JwtAccessToken), user, nil
+	return httputils.BuildCookie(jwtRefreshToken, httputils.JwtRefreshToken), httputils.BuildCookie(jwtAccessToken, httputils.JwtAccessToken), nil
 }
 
 func (v *userUsecase) Login(ctx context.Context, email, password string) (*fiber.Cookie, *fiber.Cookie, *user.User, error) {

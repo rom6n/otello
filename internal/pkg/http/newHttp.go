@@ -18,18 +18,54 @@ import (
 	"github.com/rom6n/otello/internal/utils/jwtutils"
 )
 
+const (
+	maxBodySize = 1024 * 20 // 20 KB
+
+	maxRequestsPerWindow = 90
+	timeWindow           = 60 * time.Second
+)
+
+type handlers struct {
+	userHandler         handler.UserHandler
+	hotelHandler        handler.HotelHandler
+	hotelRoomHandler    handler.HotelRoomHandler
+	rentHandler         handler.RentHandler
+	flightTicketHandler handler.FlightTicketHandler
+}
+
+type adminAPIs struct {
+	hotelApi        fiber.Router
+	hotelRoomApi    fiber.Router
+	flightTicketApi fiber.Router
+}
+
+type userAPIs struct {
+	userApi         fiber.Router
+	hotelApi        fiber.Router
+	hotelRoomApi    fiber.Router
+	flightTicketApi fiber.Router
+}
+
 func NewFiberApp(cfg config.Config) *fiber.App {
 	app := fiber.New()
 	app.Use(logger.New())
 	app.Use(limiter.New(limiter.Config{
-		Max:               60,
-		Expiration:        60 * time.Second,
+		Max:               maxRequestsPerWindow,
+		Expiration:        timeWindow,
 		LimiterMiddleware: limiter.SlidingWindow{},
 	}))
-	app.Use(MaxBody)
+	app.Use(maxBodyLimitMiddleware)
+	CheckAuthorized := checkJwtMiddleware(cfg.JWTRepo, false)
 
-	app.Get("/docs/*", swagger.HandlerDefault)
+	createdAdminAPI, createdUserAPI := createAPIGroups(app, cfg)
+	createdHandlers := createHandlers(cfg)
+	connectUserRoutes(app, createdHandlers, createdUserAPI, CheckAuthorized)
+	connectAdminRoutes(createdHandlers, createdAdminAPI)
 
+	return app
+}
+
+func createAPIGroups(app *fiber.App, cfg config.Config) (adminAPIs, userAPIs) {
 	api := app.Group("/api")
 
 	userApi := api.Group("/user")
@@ -37,11 +73,63 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 	hotelRoomApi := api.Group("/hotel-room")
 	flightTicketApi := api.Group("/flight-ticket")
 
-	adminApi := api.Group("/admin", CheckJwtMiddleware(cfg.JWTRepo, true))
+	adminApi := api.Group("/admin", checkJwtMiddleware(cfg.JWTRepo, true))
+
 	adminHotelApi := adminApi.Group("/hotel")
 	adminHotelRoomApi := adminApi.Group("/hotel-room")
 	adminFlightTicketApi := adminApi.Group("/flight-ticket")
 
+	newAdminApi := adminAPIs{
+		hotelApi:        adminHotelApi,
+		hotelRoomApi:    adminHotelRoomApi,
+		flightTicketApi: adminFlightTicketApi,
+	}
+
+	newUserApi := userAPIs{
+		userApi:         userApi,
+		hotelApi:        hotelApi,
+		hotelRoomApi:    hotelRoomApi,
+		flightTicketApi: flightTicketApi,
+	}
+
+	return newAdminApi, newUserApi
+}
+
+func connectAdminRoutes(handlers handlers, createdAdminApi adminAPIs) {
+	createdAdminApi.hotelApi.Post("/create", handlers.hotelHandler.Create())
+	createdAdminApi.hotelApi.Put("/update", handlers.hotelHandler.Update())
+	createdAdminApi.hotelApi.Delete("/delete", handlers.hotelHandler.Delete())
+
+	createdAdminApi.hotelRoomApi.Post("/create", handlers.hotelRoomHandler.Create())
+	createdAdminApi.hotelRoomApi.Put("/update", handlers.hotelRoomHandler.Update())
+	createdAdminApi.hotelRoomApi.Delete("/delete", handlers.hotelRoomHandler.Delete())
+
+	createdAdminApi.flightTicketApi.Post("/create", handlers.flightTicketHandler.Create())
+	createdAdminApi.flightTicketApi.Put("/update", handlers.flightTicketHandler.Update())
+	createdAdminApi.flightTicketApi.Delete("/delete", handlers.flightTicketHandler.Delete())
+}
+
+func connectUserRoutes(app *fiber.App, handlers handlers, createdUserApi userAPIs, CheckAuthorized fiber.Handler) {
+	// Swagger docs route
+	app.Get("/docs/*", swagger.HandlerDefault)
+
+	createdUserApi.userApi.Post("/register", handlers.userHandler.Register())
+	createdUserApi.userApi.Post("/login", handlers.userHandler.Login())
+	createdUserApi.userApi.Post("/get-admin", CheckAuthorized, handlers.userHandler.GetAdminRole())
+	createdUserApi.userApi.Post("/get-user", CheckAuthorized, handlers.userHandler.GetUserRole())
+	createdUserApi.userApi.Put("/rename", CheckAuthorized, handlers.userHandler.ChangeName())
+
+	createdUserApi.hotelApi.Get("/find", handlers.hotelHandler.Find())
+
+	createdUserApi.hotelRoomApi.Get("/find", handlers.hotelRoomHandler.Find())
+	createdUserApi.hotelRoomApi.Post("/rent", CheckAuthorized, handlers.rentHandler.Create())
+	createdUserApi.hotelRoomApi.Post("/unrent", CheckAuthorized, handlers.rentHandler.Delete())
+
+	createdUserApi.flightTicketApi.Get("/find", handlers.flightTicketHandler.Find())
+	createdUserApi.flightTicketApi.Post("/buy", handlers.flightTicketHandler.Buy())
+}
+
+func createHandlers(cfg config.Config) handlers {
 	userHandler := handler.UserHandler{
 		UserUsecase: cfg.UserUsecases,
 	}
@@ -61,50 +149,30 @@ func NewFiberApp(cfg config.Config) *fiber.App {
 	flightTicketHandler := handler.FlightTicketHandler{
 		FlightTicketUsecase: cfg.FlightTicketUsecases,
 	}
-
-	userApi.Post("/register", userHandler.Register())
-	userApi.Post("/login", userHandler.Login())
-	userApi.Post("/get-admin", CheckJwtMiddleware(cfg.JWTRepo, false), userHandler.GetAdminRole())
-	userApi.Post("/get-user", CheckJwtMiddleware(cfg.JWTRepo, false), userHandler.GetUserRole())
-	userApi.Put("/rename", CheckJwtMiddleware(cfg.JWTRepo, false), userHandler.ChangeName())
-
-	hotelApi.Get("/find", hotelHandler.Find())
-
-	hotelRoomApi.Get("/find", hotelRoomHandler.Find())
-	hotelRoomApi.Post("/rent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Create())
-	hotelRoomApi.Post("/unrent", CheckJwtMiddleware(cfg.JWTRepo, false), rentHandler.Delete())
-
-	flightTicketApi.Get("/find", flightTicketHandler.Find())
-	flightTicketApi.Post("/buy", flightTicketHandler.Buy())
-
-	// 5da2255a-1ce7-4427-ad44-862165ebf9d7
-	adminHotelApi.Post("/create", hotelHandler.Create())
-	adminHotelApi.Put("/update", hotelHandler.Update())
-	adminHotelApi.Delete("/delete", hotelHandler.Delete())
-
-	adminHotelRoomApi.Post("/create", hotelRoomHandler.Create())
-	adminHotelRoomApi.Put("/update", hotelRoomHandler.Update())
-	adminHotelRoomApi.Delete("/delete", hotelRoomHandler.Delete())
-
-	adminFlightTicketApi.Post("/create", flightTicketHandler.Create())
-	adminFlightTicketApi.Put("/update", flightTicketHandler.Update())
-	adminFlightTicketApi.Delete("/delete", flightTicketHandler.Delete())
-
-	return app
+	return handlers{
+		userHandler:         userHandler,
+		hotelHandler:        hotelHandler,
+		hotelRoomHandler:    hotelRoomHandler,
+		rentHandler:         rentHandler,
+		flightTicketHandler: flightTicketHandler,
+	}
 }
 
-func CheckJwtMiddleware(jwtRepo jwtutils.JwtRepository, adminOnly bool) fiber.Handler {
+func checkJwtMiddleware(jwtRepo jwtutils.JwtRepository, adminOnly bool) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		errLoginBeforeBeProcessed := httputils.HandleUnsuccess(c, "login before be processed", "unauthorized", nil, fiber.StatusUnauthorized)
+
 		jwtToken := c.Cookies("jwtToken")
 
 		var userUuid string
-		var userRole user.UserRole
+		var userRole string
 		if jwtToken == "" {
-			var buildErr error
-			userUuid, userRole, buildErr = buildAccessJwtTokenByRefreshJwtToken(c, jwtRepo)
+			gottenUserUuid, gottenUserRole, buildErr := buildAccessJwtTokenByRefreshJwtToken(c, jwtRepo)
 			if buildErr != nil {
 				return buildErr
 			}
+			userUuid = gottenUserUuid
+			userRole = string(gottenUserRole)
 		}
 
 		if userUuid == "" || userRole == "" {
@@ -113,16 +181,24 @@ func CheckJwtMiddleware(jwtRepo jwtutils.JwtRepository, adminOnly bool) fiber.Ha
 				return httputils.HandleUnsuccess(c, "jwt token not verified or accepted", fmt.Sprintf("%v-%v", err, claims["iss"]), nil, fiber.StatusForbidden)
 			}
 
-			userUuid = claims["user_id"].(string)
-			userRole = user.UserRole(claims["role"].(string))
+			var ok bool
+			if userUuid, ok = claims["user_id"].(string); !ok {
+				flog.Warnf("User has not string-type user_id in claims")
+				return errLoginBeforeBeProcessed
+			}
+
+			if userRole, ok = claims["role"].(string); !ok {
+				flog.Warnf("User has not string-type role")
+				return errLoginBeforeBeProcessed
+			}
 		}
 
-		if adminOnly && userRole != user.RoleAdmin {
+		if adminOnly && userRole != string(user.RoleAdmin) {
 			return httputils.HandleUnsuccess(c, "no permission", "", nil, fiber.StatusForbidden)
 		}
 
 		c.Locals("id", userUuid)
-		c.Locals("role", string(userRole))
+		c.Locals("role", userRole)
 		flog.Info("MIDDLEWARE PASSED IP: ", c.IP())
 
 		return c.Next()
@@ -130,9 +206,11 @@ func CheckJwtMiddleware(jwtRepo jwtutils.JwtRepository, adminOnly bool) fiber.Ha
 }
 
 func buildAccessJwtTokenByRefreshJwtToken(c *fiber.Ctx, jwtRepo jwtutils.JwtRepository) (string, user.UserRole, error) {
+	errLoginBeforeBeProcessed := httputils.HandleUnsuccess(c, "login before be processed", "unauthorized", nil, fiber.StatusUnauthorized)
+
 	jwtRefreshToken := c.Cookies("jwtRefreshToken")
 	if jwtRefreshToken == "" {
-		return "", user.RoleUser, httputils.HandleUnsuccess(c, "login before be processed", "unauthorized", nil, fiber.StatusUnauthorized)
+		return "", user.RoleUser, errLoginBeforeBeProcessed
 	}
 
 	claims, err := jwtRepo.VerifyJwt(jwtRefreshToken)
@@ -148,7 +226,7 @@ func buildAccessJwtTokenByRefreshJwtToken(c *fiber.Ctx, jwtRepo jwtutils.JwtRepo
 	jwtAccessToken, jwtErr := jwtRepo.NewJwt(userUuid, userRole, httputils.JwtAccessToken)
 	if jwtErr != nil {
 		flog.Warnf("Failed to create jwt access token: %v", jwtErr)
-		return "", user.RoleUser, httputils.HandleUnsuccess(c, "login before be processed", "unauthorized", nil, fiber.StatusUnauthorized)
+		return "", user.RoleUser, errLoginBeforeBeProcessed
 	}
 
 	jwtAccessCookie := httputils.BuildCookie(jwtAccessToken, httputils.JwtAccessToken)
@@ -158,11 +236,17 @@ func buildAccessJwtTokenByRefreshJwtToken(c *fiber.Ctx, jwtRepo jwtutils.JwtRepo
 }
 
 func parseUserDataFromClaims(c *fiber.Ctx, claims jwt.MapClaims) (uuid.UUID, user.UserRole, error) {
-	userUuidStr := claims["user_id"].(string)
+	errLoginBeforeBeProcessed := httputils.HandleUnsuccess(c, "login before be processed", "unauthorized", nil, fiber.StatusUnauthorized)
+
+	userUuidStr, ok := claims["user_id"].(string)
+	if !ok {
+		flog.Warnf("User has not string-type user_id in claims")
+		return uuid.Nil, user.RoleUser, errLoginBeforeBeProcessed
+	}
 	userUuid, parseErr := uuid.Parse(userUuidStr)
 	if parseErr != nil {
 		flog.Warnf("Failed to parse user UUID: %v", parseErr)
-		return uuid.Nil, user.RoleUser, httputils.HandleUnsuccess(c, "login before be processed", "unauthorized", nil, fiber.StatusUnauthorized)
+		return uuid.Nil, user.RoleUser, errLoginBeforeBeProcessed
 	}
 
 	var userRole user.UserRole
@@ -173,16 +257,16 @@ func parseUserDataFromClaims(c *fiber.Ctx, claims jwt.MapClaims) (uuid.UUID, use
 		userRole = user.RoleAdmin
 	default:
 		flog.Warnf("User has not existed role: %v", claims["role"])
-		return uuid.Nil, user.RoleUser, httputils.HandleUnsuccess(c, "login before be processed", "unauthorized", nil, fiber.StatusUnauthorized)
+		return uuid.Nil, user.RoleUser, errLoginBeforeBeProcessed
 	}
 
 	return userUuid, userRole, nil
 }
 
-func MaxBody(c *fiber.Ctx) error {
-	maxSize := 1024 * 20
+func maxBodyLimitMiddleware(c *fiber.Ctx) error {
+	maxSize := maxBodySize
 	if len(c.Body()) > maxSize {
-		return c.Status(fiber.StatusRequestEntityTooLarge).SendString("Payload too large")
+		return httputils.HandleUnsuccess(c, "payload too large", "", nil, fiber.StatusRequestEntityTooLarge)
 	}
 	return c.Next()
 }

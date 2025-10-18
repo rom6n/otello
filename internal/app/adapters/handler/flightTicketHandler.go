@@ -121,7 +121,7 @@ func parseFlightTicketParams(c *fiber.Ctx, parseTo *flightticket.FlightTicket, a
 		unixArrival := arrivalParsed.Unix()
 
 		if memoryTakeOffUnix >= unixArrival {
-			return nil, nil, fmt.Errorf("query value 'take-off' must be greater than query value 'arrival'")
+			return nil, nil, fmt.Errorf("query value 'arrival' must be greater than query value 'take-off'")
 		}
 		parseTo.Arrival = unixArrival
 	}

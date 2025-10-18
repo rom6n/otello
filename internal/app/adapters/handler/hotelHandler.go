@@ -95,8 +95,10 @@ func parseHotelParams(c *fiber.Ctx, allRequired bool, parseTo *hotel.Hotel) (*st
 		starsTo = uint32(starsParsed)
 	}
 
-	if starsFrom > starsTo {
-		return nil, 0, 0, fmt.Errorf("query value 'stars-to' must be greater or equal query value 'stars-from'")
+	if starsToStr != "" {
+		if starsFrom > starsTo {
+			return nil, 0, 0, fmt.Errorf("query value 'stars-to' must be greater or equal query value 'stars-from'")
+		}
 	}
 
 	return arrange, starsFrom, starsTo, nil

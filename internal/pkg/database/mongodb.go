@@ -11,7 +11,7 @@ import (
 func NewClient() *mongo.Client {
 	uri := os.Getenv("MONGO_URI")
 	if uri == "" {
-		log.Fatalln("MONGO_URL in env is not set")
+		log.Fatalln("MONGO_URI in env is not set")
 	}
 
 	client, err := mongo.Connect(options.Client().ApplyURI(uri))

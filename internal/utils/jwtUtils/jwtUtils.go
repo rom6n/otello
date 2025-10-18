@@ -12,6 +12,11 @@ import (
 	httputils "github.com/rom6n/otello/internal/utils/httputils"
 )
 
+const (
+	jwtAccessTokenExpirationMinutes  = 10
+	jwtRefreshTokenExpirationMinutes = 10080
+)
+
 type JwtRepository interface {
 	NewJwt(uuid uuid.UUID, role user.UserRole, usage httputils.CookieUsage) (string, error)
 	VerifyJwt(tokenStr string) (jwt.MapClaims, error)
@@ -36,9 +41,9 @@ func (v *JwtRepo) NewJwt(uuid uuid.UUID, role user.UserRole, usage httputils.Coo
 	var exp int64
 	switch usage {
 	case httputils.JwtAccessToken:
-		exp = time.Now().Add(10 * time.Minute).Unix()
+		exp = time.Now().Add(jwtAccessTokenExpirationMinutes * time.Minute).Unix()
 	case httputils.JwtRefreshToken:
-		exp = time.Now().Add(7 * 24 * 3600 * time.Second).Unix()
+		exp = time.Now().Add(jwtRefreshTokenExpirationMinutes * time.Minute).Unix()
 	}
 
 	claims := jwt.MapClaims{

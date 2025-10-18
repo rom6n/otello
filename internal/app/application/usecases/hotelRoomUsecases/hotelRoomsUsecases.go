@@ -16,7 +16,7 @@ type HotelRoomUsecases interface {
 	Update(ctx context.Context, newHotelRoomData *hotelroom.HotelRoom) error
 	Delete(ctx context.Context, hotelRoomUuid uuid.UUID) error
 	Get(ctx context.Context, hotelRoomUuid uuid.UUID) (*hotelroom.HotelRoom, error)
-	GetWithParams(ctx context.Context, hotelRoomFirstFilter, hotelRoomSecondFilter *hotelroom.HotelRoom, dateFrom, dateTo *int64, days *uint64, needSort, isAsc bool) ([]hotelroom.HotelRoom, error)
+	GetWithParams(ctx context.Context, filter *hotelroom.FindHotelRoomFilterDTO) ([]hotelroom.HotelRoom, error)
 }
 
 type hotelRoomUsecase struct {
@@ -85,25 +85,19 @@ func (v *hotelRoomUsecase) Get(ctx context.Context, hotelRoomUuid uuid.UUID) (*h
 	return hotel, nil
 }
 
-func (v *hotelRoomUsecase) GetWithParams(ctx context.Context, hotelRoomFirstFilter, hotelRoomSecondFilter *hotelroom.HotelRoom, dateFrom, dateTo *int64, days *uint64, needSort, isAsc bool) ([]hotelroom.HotelRoom, error) {
+func (v *hotelRoomUsecase) GetWithParams(ctx context.Context, filter *hotelroom.FindHotelRoomFilterDTO) ([]hotelroom.HotelRoom, error) {
 	usecaseCtx, cancel := v.getContext(ctx)
 	defer cancel()
 
-	hotelRooms, err := v.hotelRoomRepo.GetHotelRoomsWithParams(usecaseCtx, hotelRoomFirstFilter, hotelRoomSecondFilter)
+	hotelRooms, err := v.hotelRoomRepo.GetHotelRoomsWithParams(usecaseCtx, filter)
 	if err != nil {
 		return nil, err
 	}
 
 	var availableHotelRooms []hotelroom.HotelRoom
-	if dateFrom != nil {
-		checkIn := *dateFrom
-		var checkOut int64
-		if dateTo == nil {
-			timeSeconds := int64(*days * 24 * 60 * 60)
-			checkOut = *dateFrom + timeSeconds
-		} else {
-			checkOut = *dateTo
-		}
+	if filter.DateFrom != nil {
+		checkIn := *filter.DateFrom
+		checkOut := *filter.DateTo
 
 		for _, hotelRoom := range hotelRooms {
 			rents, getRentsErr := v.rentRepo.GetRentsByHotelRoomUuid(usecaseCtx, hotelRoom.Uuid)
@@ -128,8 +122,8 @@ func (v *hotelRoomUsecase) GetWithParams(ctx context.Context, hotelRoomFirstFilt
 		availableHotelRooms = hotelRooms
 	}
 
-	if needSort {
-		if isAsc {
+	if filter.Arrange != "" {
+		if filter.Arrange == "asc" {
 			sort.Slice(availableHotelRooms, func(i, j int) bool {
 				return *availableHotelRooms[i].Value < *availableHotelRooms[j].Value
 			})

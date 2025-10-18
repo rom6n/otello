@@ -9,8 +9,17 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
+const (
+	saltLength = 12
+
+	hashLength  = 32
+	hashTime    = 2
+	hashMemory  = 64 * 1024
+	hashThreads = 4
+)
+
 func GenerateSalt() ([]byte, error) {
-	salt := make([]byte, 12)
+	salt := make([]byte, saltLength)
 	_, err := rand.Read(salt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate salt: %v", err)
@@ -20,7 +29,7 @@ func GenerateSalt() ([]byte, error) {
 }
 
 func HashPassword(password string, salt []byte) string {
-	hash := argon2.IDKey([]byte(password), salt, 2, 64*1024, 4, 32)
+	hash := argon2.IDKey([]byte(password), salt, hashTime, hashMemory, hashThreads, hashLength)
 
 	hashStr := base64.RawStdEncoding.EncodeToString(hash)
 	saltStr := base64.RawStdEncoding.EncodeToString(salt)
