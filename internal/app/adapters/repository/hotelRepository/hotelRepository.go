@@ -85,9 +85,12 @@ func (v *hotelRepo) DeleteHotel(ctx context.Context, hotelUuid uuid.UUID) error 
 
 	collection := v.getCollection()
 
-	_, err := collection.DeleteOne(dbCtx, bson.D{{Key: "_id", Value: hotelUuid}})
+	result, err := collection.DeleteOne(dbCtx, bson.D{{Key: "_id", Value: hotelUuid}})
 	if err != nil {
 		return fmt.Errorf("failed to delete hotel: %v", err)
+	}
+	if result.DeletedCount < 1 {
+		return fmt.Errorf("failed to delete hotel: hotel not found")
 	}
 
 	return nil

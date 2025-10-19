@@ -54,11 +54,7 @@ func (v *UserHandler) Register() fiber.Handler {
 		c.Cookie(jwtRefreshCookie)
 		c.Cookie(jwtAccessCookie)
 
-		return c.JSON(httputils.Response{
-			Success: true,
-			Message: "successfully registered",
-			Data:    newUser,
-		})
+		return httputils.HandleSuccess(c, "successfully registered", newUser)
 	}
 }
 
@@ -97,11 +93,7 @@ func (v *UserHandler) Login() fiber.Handler {
 		c.Cookie(jwtRefreshCookie)
 		c.Cookie(jwtAccessCookie)
 
-		return c.JSON(httputils.Response{
-			Success: true,
-			Message: "successfully logged in",
-			Data:    foundUser,
-		})
+		return httputils.HandleSuccess(c, "successfully logged in", foundUser)
 	}
 }
 
@@ -137,10 +129,7 @@ func (v *UserHandler) ChangeName() fiber.Handler {
 			return httputils.HandleUnsuccess(c, unsuccessMessage, fmt.Sprintf("%v", err), nil, fiber.StatusInternalServerError)
 		}
 
-		return c.JSON(httputils.Response{
-			Success: true,
-			Message: fmt.Sprintf("successfully changed the name to '%v'", newName),
-		})
+		return httputils.HandleSuccess(c, fmt.Sprintf("successfully changed the name to '%v'", newName), nil)
 	}
 }
 

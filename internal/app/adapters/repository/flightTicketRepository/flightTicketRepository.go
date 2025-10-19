@@ -89,9 +89,12 @@ func (v *flightTicketRepo) DeleteFlightTicket(ctx context.Context, flightTicketU
 
 	collection := v.getCollection()
 
-	_, err := collection.DeleteOne(dbCtx, bson.D{{Key: "_id", Value: flightTicketUuid}})
+	result, err := collection.DeleteOne(dbCtx, bson.D{{Key: "_id", Value: flightTicketUuid}})
 	if err != nil {
 		return fmt.Errorf("failed to delete flight ticket: %v", err)
+	}
+	if result.DeletedCount < 1 {
+		return fmt.Errorf("failed to delete flight ticket: flight ticket not found")
 	}
 
 	return nil
